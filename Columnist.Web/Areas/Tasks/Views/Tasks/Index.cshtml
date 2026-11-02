@@ -1,0 +1,128 @@
+﻿@model Columnist.Tasks.Features.Tasks.Queries.GetBoard.Models.GetBoardModel
+
+<div id="kb-toasts">
+    @if (TempData["Message"] is not null || TempData["Error"] is not null)
+    {
+        <div class="kb-toast-stack">
+            @if (TempData["Message"] is string success)
+            {
+                <div class="kb-toast kb-toast-success" role="status" aria-live="polite">
+                    <span class="kb-toast-text">@success</span>
+                    <button type="button" class="kb-toast-close" aria-label="Close">&times;</button>
+                </div>
+            }
+            @if (TempData["Error"] is string error)
+            {
+                <div class="kb-toast kb-toast-error" role="alert">
+                    <span class="kb-toast-text">@error</span>
+                    <button type="button" class="kb-toast-close" aria-label="Close">&times;</button>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@if (Model.Boards.Count == 0)
+{
+    <div class="kb-empty-state">
+        <h2>No boards yet</h2>
+        <p class="mb-0">Once a board is created, its columns and tasks will show up here.</p>
+    </div>
+    return;
+}
+
+<div id="kb-board-region">
+    <div class="kb-page-header">
+        <div>
+            <h1 class="kb-page-title">@Model.SelectedBoardName</h1>
+            <p class="kb-subtitle">@Model.TaskCount tasks across @Model.Columns.Count columns</p>
+        </div>
+        <nav class="kb-tabs" aria-label="Boards">
+            @foreach (var tab in Model.Boards)
+            {
+                var active = tab.Selected;
+                <a class="kb-tab @(active ? "active" : null)" aria-current="@(active ? "page" : null)"
+                   asp-action="Index" asp-route-boardToken="@tab.Token"
+                   hx-get="@Url.Action("Index", new { boardToken = tab.Token })" hx-target="#kb-board-region" hx-select="#kb-board-region" hx-select-oob="#kb-toasts" hx-swap="outerHTML" hx-push-url="true">@tab.Name</a>
+            }
+        </nav>
+    </div>
+
+    @await Component.InvokeAsync("SearchBox", new
+    {
+        url = Url.Action("Index", "Tasks", new { area = "Tasks" }),
+        target = "#kb-board-columns",
+        value = Model.Search,
+        placeholder = "Search tasks by title…",
+        hiddenFields = new Dictionary<string, string?> { ["boardToken"] = Model.SelectedBoardToken }
+    })
+
+    <div id="kb-board-columns" class="kb-board">
+        @foreach (var column in Model.Columns)
+        {
+            <section class="kb-column" aria-label="@column.Name">
+                <div class="kb-column-header">
+                    <span class="kb-status-pill" style="background:@column.StatusColor">@column.Name</span>
+                    <span class="kb-column-count">@column.Tasks.Count</span>
+                </div>
+
+                <div class="kb-column-body" data-column-token="@column.ColumnToken">
+                    @foreach (var task in column.Tasks)
+                    {
+                        <partial name="_TaskCard" model="task" view-data='new ViewDataDictionary(ViewData) { ["BoardToken"] = Model.SelectedBoardToken }' />
+                    }
+
+                    @if (column.Tasks.Count == 0)
+                    {
+                        <div class="kb-empty">No tasks</div>
+                    }
+                </div>
+
+                <a class="kb-add-task" asp-action="Save" asp-route-columnToken="@column.ColumnToken" asp-route-boardToken="@Model.SelectedBoardToken"
+                   hx-get="@Url.Action("Save", new { columnToken = column.ColumnToken, boardToken = Model.SelectedBoardToken })" hx-target="#kb-task-modal-body" hx-swap="innerHTML">
+                    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round">
+                        <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    Add task
+                </a>
+            </section>
+        }
+    </div>
+
+    <form id="kb-move-form" asp-action="Move" method="post" hidden
+          hx-post="@Url.Action("Move")" hx-target="#kb-board-region" hx-select="#kb-board-region" hx-select-oob="#kb-toasts" hx-swap="outerHTML">
+        <input type="hidden" name="token" />
+        <input type="hidden" name="columnToken" />
+        <input type="hidden" name="boardToken" value="@Model.SelectedBoardToken" />
+    </form>
+</div>
+
+<div class="modal fade" id="kb-delete-modal" tabindex="-1" aria-labelledby="kb-delete-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content kb-modal">
+            <div class="kb-modal-body">
+                <div class="kb-modal-icon">
+                    <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6" />
+                    </svg>
+                </div>
+                <h2 class="kb-modal-title" id="kb-delete-title">Delete task?</h2>
+                <p class="kb-modal-text">
+                    <strong id="kb-delete-name"></strong> will be removed from the board.
+                </p>
+            </div>
+            <div class="kb-modal-footer">
+                <button type="button" class="kb-btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="kb-btn-danger" id="kb-delete-confirm">Delete task</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="kb-task-modal" tabindex="-1" aria-labelledby="kb-task-modal-title" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content kb-modal">
+            <div class="kb-modal-body" id="kb-task-modal-body"></div>
+        </div>
+    </div>
+</div>

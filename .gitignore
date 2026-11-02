@@ -1,0 +1,8 @@
+keys/
+.vs/
+bin/
+obj/
+*.user
+*.suo
+*.slnLaunch.user
+Columnist.Web/wwwroot/dms/

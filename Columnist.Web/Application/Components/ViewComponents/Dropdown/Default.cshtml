@@ -1,0 +1,15 @@
+@model IEnumerable<Columnist.Contracts.Dtos.TokenOptionDto>
+@{
+    var name = (string)ViewData["FieldName"]!;
+    var placeholder = (string)ViewData["Placeholder"]!;
+    var requiredMessage = ViewData["RequiredMessage"] as string;
+}
+<select id="@name" name="@name" class="form-select"
+        data-val="@(requiredMessage is not null ? "true" : null)"
+        data-val-required="@requiredMessage">
+    <option value="">@placeholder</option>
+    @foreach (var item in Model)
+    {
+        <option value="@item.Token" selected="@item.Selected">@item.Name</option>
+    }
+</select>

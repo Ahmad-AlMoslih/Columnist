@@ -1,0 +1,26 @@
+@{
+    var imageUrls = (IReadOnlyList<string>)ViewData["ImageUrls"]!;
+    var removeImages = (bool)ViewData["RemoveImages"]!;
+}
+<div class="kb-images-header">
+    <label for="Images" class="form-label">Images</label>
+    @if (imageUrls.Count > 0)
+    {
+        <span class="kb-images-count">@imageUrls.Count @(imageUrls.Count == 1 ? "image" : "images")</span>
+    }
+</div>
+@if (imageUrls.Count > 0)
+{
+    <div class="kb-gallery">
+        @foreach (var url in imageUrls)
+        {
+            <img src="@url" alt="Task image" />
+            <input type="hidden" name="ImageUrls" value="@url" />
+        }
+    </div>
+    <div class="kb-check-row">
+        <input type="checkbox" id="RemoveImages" name="RemoveImages" value="true" class="form-check-input" checked="@removeImages" />
+        <input type="hidden" name="RemoveImages" value="false" />
+        <label for="RemoveImages" class="form-check-label">Remove all images</label>
+    </div>
+}

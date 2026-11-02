@@ -1,0 +1,82 @@
+@model Columnist.Contracts.Dtos.TaskFormDto
+@using Columnist.Contracts.Dtos
+@using Columnist.Web.Application.Extensions
+
+@{
+    var today = DateTime.Today;
+    var minDate = Model.DueDate is { } due && due.Date < today ? due.Date : today;
+    var imageUrls = Model.ImageUrls ?? [];
+    var inModal = Context.Request.IsHtmx();
+}
+
+<div id="kb-task-form-root">
+    @if (inModal)
+    {
+        <h2 class="kb-modal-title" id="kb-task-modal-title">@(Model.IsNew ? "New task" : "Edit task")</h2>
+    }
+    <form asp-action="Save" method="post" enctype="multipart/form-data" class="kb-form-card"
+          hx-post="@(inModal ? Url.Action("Save") : null)" hx-encoding="multipart/form-data"
+          hx-target="#kb-board-region" hx-select="#kb-board-region" hx-select-oob="#kb-toasts" hx-swap="outerHTML">
+        <input type="hidden" asp-for="Token" />
+        <input type="hidden" asp-for="ReturnBoardToken" />
+
+        <div class="kb-form-body">
+            <div asp-validation-summary="ModelOnly" class="text-danger kb-form-summary"></div>
+
+            <div class="kb-form-main">
+                @Html.TextFieldFor(m => m.Title,
+                    requiredMessage: ErrorMessages.TitleRequired,
+                    maxLength: TaskFormDto.TitleMaxLength,
+                    maxLengthMessage: string.Format(ErrorMessages.TitleTooLong, nameof(TaskFormDto.Title), TaskFormDto.TitleMaxLength))
+                @Html.TextAreaFieldFor(m => m.Description, rows: 7,
+                    maxLength: TaskFormDto.DescriptionMaxLength,
+                    maxLengthMessage: string.Format(ErrorMessages.DescriptionTooLong, nameof(TaskFormDto.Description), TaskFormDto.DescriptionMaxLength))
+
+                <div class="kb-form-row-3">
+                <div class="mb-3">
+                    @Html.LabelFor(m => m.ColumnToken, new { @class = "form-label" })
+                    @await Component.InvokeAsync("Dropdown", new
+                    {
+                        name = "ColumnToken",
+                        options = Model.Columns,
+                        placeholder = "-- Choose a status --",
+                        requiredMessage = ErrorMessages.ChooseStatus
+                    })
+                    @Html.ValidationMessageFor(m => m.ColumnToken, null, new { @class = "text-danger" })
+                </div>
+
+                <div class="mb-3">
+                    @Html.LabelFor(m => m.AssigneeToken, new { @class = "form-label" })
+                    @await Component.InvokeAsync("Dropdown", new
+                    {
+                        name = "AssigneeToken",
+                        options = Model.Users,
+                        placeholder = "Unassigned"
+                    })
+                    @Html.ValidationMessageFor(m => m.AssigneeToken, null, new { @class = "text-danger" })
+                </div>
+
+                @Html.DateFieldFor(m => m.DueDate, min: minDate, minMessage: ErrorMessages.DueDateInPast)
+                </div>
+
+                <div>
+                    @await Component.InvokeAsync("ImageGallery", new { imageUrls, removeImages = Model.RemoveImages })
+                    @await Component.InvokeAsync("FileUpload", new { name = "Images", hasExisting = imageUrls.Count > 0 })
+                    <span asp-validation-for="Images" class="text-danger"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="kb-form-footer">
+            @if (inModal)
+            {
+                <button type="button" class="kb-btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            }
+            else
+            {
+                <a class="kb-btn-secondary" asp-action="Index" asp-route-boardToken="@Model.ReturnBoardToken">Cancel</a>
+            }
+            <button type="submit" class="kb-btn-primary">@(Model.IsNew ? "Create task" : "Save changes")</button>
+        </div>
+    </form>
+</div>

@@ -1,0 +1,17 @@
+@{
+    var name = (string)ViewData["FieldName"]!;
+    var hasExisting = (bool)ViewData["HasExisting"]!;
+}
+<label class="kb-upload" for="@name">
+    <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+        <path d="M17 8l-5-5-5 5" />
+        <path d="M12 3v12" />
+    </svg>
+    <span class="kb-upload-title">@(hasExisting ? "Add more images" : "Add images")</span>
+    <span class="kb-upload-hint">JPG, PNG, GIF, WEBP or BMP · up to 10 files · 10 MB each</span>
+    <input id="@name" name="@name" type="file" multiple class="form-control" accept="image/*"
+           data-max-files="10" data-max-files-message="You can upload up to 10 images at a time."
+           data-max-size="10485760" data-max-size-message="Each file can't be larger than 10 MB."
+           data-allowed-ext=".jpg,.jpeg,.png,.gif,.webp,.bmp" data-allowed-ext-message="Allowed file types: JPG, PNG, GIF, WEBP or BMP." />
+</label>

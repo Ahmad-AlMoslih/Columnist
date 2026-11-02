@@ -1,0 +1,86 @@
+﻿@inject Columnist.Auth.Security.CurrentUser.IUserContext UserContext
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Columnist</title>
+    <script type="importmap"></script>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" />
+    <link rel="stylesheet" href="~/css/theme.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/columnist.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/Columnist.Web.styles.css" asp-append-version="true" />
+</head>
+<body>
+    <header>
+        @{
+            var area = ViewContext.RouteData.Values["area"] as string;
+            var controller = ViewContext.RouteData.Values["controller"] as string;
+            var inTasks = string.Equals(area, "Tasks", StringComparison.OrdinalIgnoreCase)
+                          && string.Equals(controller, "Tasks", StringComparison.OrdinalIgnoreCase);
+            var inDeleted = string.Equals(controller, "DeletedTasks", StringComparison.OrdinalIgnoreCase);
+            
+        }
+        <nav class="kb-nav" aria-label="Main">
+            <div class="container-fluid kb-nav-inner">
+                <a class="kb-brand" asp-area="Tasks" asp-controller="Tasks" asp-action="Index">
+                    <img src="~/images/columnist-logo.png" alt="Columnist" class="kb-brand-logo" />
+                </a>
+                <div class="kb-nav-links">
+                    <a class="kb-nav-link @(inTasks ? "active" : null)" aria-current="@(inTasks ? "page" : null)" asp-area="Tasks" asp-controller="Tasks" asp-action="Index">Tasks</a>
+                    @if (UserContext.IsAdmin)
+                    {
+                        <a class="kb-nav-link @(inDeleted ? "active" : null)" aria-current="@(inDeleted ? "page" : null)" asp-area="Tasks" asp-controller="DeletedTasks" asp-action="Index">Deleted Tasks</a>
+                    }
+                </div>
+                <a class="kb-btn-primary" asp-area="Tasks" asp-controller="Tasks" asp-action="Save">New task</a>
+                @if (UserContext.IsAuthenticated)
+                {
+                    <div class="kb-user">
+                        <span class="kb-user-name">@UserContext.FullName</span>
+                        <form asp-area="Auth" asp-controller="Account" asp-action="Logout" method="post">
+                            <button type="submit" class="kb-logout">Log out</button>
+                        </form>
+                    </div>
+                }
+            </div>
+        </nav>
+    </header>
+    <div class="container">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="border-top footer text-muted">
+        <div class="container">
+            &copy; 2026 - Columnist
+        </div>
+    </footer>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/lib/htmx/htmx.min.js" asp-append-version="true"></script>
+    <script src="~/lib/Sortable/Sortable.min.js" asp-append-version="true"></script>
+    <script src="~/js/components/confirm-modal.js" asp-append-version="true"></script>
+    <script src="~/js/components/task-modal.js" asp-append-version="true"></script>
+    <script src="~/js/components/board-dnd.js" asp-append-version="true"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <div class="kb-lightbox" id="kb-lightbox" hidden>
+        <button type="button" class="kb-lightbox-close" aria-label="Close">
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+        </button>
+        <img alt="Task image" />
+    </div>
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/components/lightbox.js" asp-append-version="true"></script>
+    <script src="~/js/components/file-upload.js" asp-append-version="true"></script>
+    <script src="~/js/components/toast.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,20 @@
+{
+  "version": "3.0",
+  "defaultProvider": "cdnjs",
+  "libraries": [
+    {
+      "library": "htmx@2.0.4",
+      "destination": "wwwroot/lib/htmx/",
+      "files": [
+        "htmx.min.js"
+      ]
+    },
+    {
+      "library": "Sortable@1.15.6",
+      "destination": "wwwroot/lib/Sortable/",
+      "files": [
+        "Sortable.min.js"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+@model Columnist.Contracts.Dtos.TaskFormDto
+
+<a class="kb-back-link" asp-action="Index" asp-route-boardToken="@Model.ReturnBoardToken">← Back to board</a>
+<h1 class="kb-page-title">@(Model.IsNew ? "New task" : "Edit task")</h1>
+
+<partial name="_TaskForm" model="Model" />

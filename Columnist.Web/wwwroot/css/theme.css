@@ -1,0 +1,49 @@
+:root {
+    --kb-bg: #F7F5F0;
+    --kb-surface: #FFFFFF;
+    --kb-surface-alt: #FAF8F3;
+    --kb-text: #1F2A44;
+    --kb-text-secondary: #3E4558;
+    --kb-text-muted: #6B6459;
+    --kb-border: #E7E1D6;
+    --kb-border-strong: #D5CDBF;
+    --kb-subtle: #F1ECE3;
+    --kb-subtle-strong: #E8E1D5;
+    --kb-dots: #DDD4C5;
+    --kb-dashed: #C2B8A8;
+    --kb-dashed-strong: #A69C8C;
+    --kb-accent: #C8553D;
+    --kb-accent-hover: #A84430;
+    --kb-accent-tint: #F8E9E4;
+    --kb-accent-soft: #F1D3C8;
+    --kb-column-bg: rgba(239, 233, 222, 0.85);
+}
+
+:root {
+    --bs-link-color-rgb: 200, 85, 61;
+    --bs-link-hover-color-rgb: 168, 68, 48;
+}
+
+.btn-primary {
+    --bs-btn-bg: var(--kb-accent);
+    --bs-btn-border-color: var(--kb-accent);
+    --bs-btn-hover-bg: var(--kb-accent-hover);
+    --bs-btn-hover-border-color: var(--kb-accent-hover);
+    --bs-btn-active-bg: var(--kb-accent-hover);
+    --bs-btn-active-border-color: var(--kb-accent-hover);
+    --bs-btn-disabled-bg: var(--kb-accent);
+    --bs-btn-disabled-border-color: var(--kb-accent);
+    --bs-btn-focus-shadow-rgb: 200, 85, 61;
+}
+
+.form-check-input:checked {
+    background-color: var(--kb-accent);
+    border-color: var(--kb-accent);
+}
+
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus {
+    border-color: var(--kb-accent);
+    box-shadow: 0 0 0 0.25rem rgba(200, 85, 61, 0.25);
+}

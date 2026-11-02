@@ -1,0 +1,57 @@
+ @model Columnist.Tasks.Features.Tasks.Queries.GetBoard.Models.GetBoardTaskModel
+@{
+    var boardToken = ViewData["BoardToken"] as string;
+}
+
+<article class="kb-card" data-task-token="@Model.Token">
+    @if (Model.FirstImageUrl is not null)
+    {
+        <div class="kb-cover">
+            <img src="@Model.FirstImageUrl" alt="" loading="lazy" />
+            @if (Model.ImageCount > 1)
+            {
+                <span class="kb-cover-badge">+@(Model.ImageCount - 1)</span>
+            }
+        </div>
+    }
+
+    <div class="kb-card-body">
+        <div class="kb-card-title-row">
+            <h3 class="kb-card-title">
+                <a asp-action="Save" asp-route-token="@Model.Token" asp-route-boardToken="@boardToken"
+                   hx-get="@Url.Action("Save", new { token = Model.Token, boardToken })" hx-target="#kb-task-modal-body" hx-swap="innerHTML">@Model.Title</a>
+            </h3>
+            <div class="dropdown">
+                <button type="button" class="kb-menu-btn" data-bs-toggle="dropdown" aria-expanded="false"
+                        data-bs-popper-config='{"strategy":"fixed"}' aria-label="Task actions">
+                    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                        <circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" />
+                    </svg>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" asp-action="Save" asp-route-token="@Model.Token" asp-route-boardToken="@boardToken"
+                           hx-get="@Url.Action("Save", new { token = Model.Token, boardToken })" hx-target="#kb-task-modal-body" hx-swap="innerHTML">Edit</a></li>
+                    <li><hr class="dropdown-divider" /></li>
+                    <li>
+                        <form asp-action="Delete" method="post" class="kb-delete-form" data-task-title="@Model.Title"
+                              hx-post="@Url.Action("Delete")" hx-target="#kb-board-region" hx-select="#kb-board-region" hx-select-oob="#kb-toasts" hx-swap="outerHTML" hx-confirm="Delete task?">
+                            <input type="hidden" name="token" value="@Model.Token" />
+                            <input type="hidden" name="boardToken" value="@boardToken" />
+                            <button type="submit" class="dropdown-item text-danger">Delete</button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Model.Description))
+        {
+            <p class="kb-card-desc">@Model.Description</p>
+        }
+
+        <div class="kb-card-footer">
+            @Html.Avatar(Model.AssigneeName)
+            @Html.DueDateChip(Model.DueDate, Model.ColumnName.Equals("Done", StringComparison.OrdinalIgnoreCase))
+        </div>
+    </div>
+</article>

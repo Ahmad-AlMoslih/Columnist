@@ -1,0 +1,32 @@
+@api = https://localhost:7001
+
+### 200 - Success: all tasks
+GET {{api}}/api/tasks
+
+### 404 - Not found: a task that doesn't exist
+GET {{api}}/api/tasks/999999
+
+### 400 - Bad request: ALL errors listed (missing title + bad columnId)
+POST {{api}}/api/tasks
+Content-Type: application/json
+
+{
+  "columnId": "abc"
+}
+### Login
+POST {{api}}/api/auth/login
+Content-Type: application/json
+
+{ "username": "admin", "password": "Admin123!" }
+
+### Logout
+POST {{api}}/api/auth/logout
+Content-Type: application/json
+
+{ "refreshToken": "D2E5A49B5F5C3F7C139D90101512E95AB45A70564C8B1CB29CF78E9D162B7A21" }
+
+### Refresh
+POST {{api}}/api/auth/refresh
+Content-Type: application/json
+
+{ "refreshToken": "369B3298964578DAEECF54734584D257A6715BDD1D4BD95DA5995DF455B846F4" }

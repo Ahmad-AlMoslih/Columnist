@@ -1,0 +1,22 @@
+@{
+    var url = (string)ViewData["Url"]!;
+    var target = (string)ViewData["Target"]!;
+    var value = ViewData["Value"] as string;
+    var placeholder = (string)ViewData["Placeholder"]!;
+    var hiddenFields = (IReadOnlyDictionary<string, string?>)ViewData["HiddenFields"]!;
+    var minLength = (int)ViewData["MinLength"]!;
+}
+<form class="kb-search" role="search" method="get" action="@url">
+    @foreach (var field in hiddenFields)
+    {
+        <input type="hidden" name="@field.Key" value="@field.Value" />
+    }
+    <input type="search" name="search" value="@value"
+           class="kb-search-input" placeholder="@placeholder" aria-label="@placeholder" autocomplete="off"
+           hx-get="@url"
+           hx-include="closest form"
+           hx-trigger="input[target.value.length === 0 || target.value.length >= @minLength] changed delay:300ms, search"
+           hx-target="@target"
+           hx-select="@target"
+           hx-swap="outerHTML" />
+</form>

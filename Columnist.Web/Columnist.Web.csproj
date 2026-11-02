@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <None Remove="Areas\Tasks\Views\DeletedTasks\Index.cshtml.tmp.21288.9e5cfb53d3b1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Columnist.Contracts\Columnist.Contracts.csproj" />
+    <ProjectReference Include="..\Columnist.Utilities\Columnist.Utilities.csproj" />
+    <ProjectReference Include="..\Columnist.Auth\Columnist.Auth.csproj" />
+    <ProjectReference Include="..\Columnist.Tasks\Columnist.Tasks.csproj" />
+    <ProjectReference Include="..\Columnist.DataAccess\Columnist.DataAccess.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MediatR" Version="14.2.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.0" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>c06af495-fec0-4683-8dfc-94453c6c8223</UserSecretsId>
+  </PropertyGroup>
+
+</Project>
