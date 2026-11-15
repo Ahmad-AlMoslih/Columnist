@@ -1,5 +1,5 @@
-using Columnist.Auth.Features.Users.Commands.Login;
-using Columnist.Auth.Features.Users.Commands.Logout;
+using Columnist.Users.Features.Users.Commands.Login;
+using Columnist.Users.Features.Users.Commands.Logout;
 using Columnist.Contracts.Dtos;
 using Columnist.Web.Application.Authentication;
 using Columnist.Web.Application.Extensions;

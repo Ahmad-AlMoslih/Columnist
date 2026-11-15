@@ -1,0 +1,6 @@
+@inject Columnist.Auth.Security.CurrentUser.IUserContext UserContext
+@* The account menu's button (_Layout). Also returned by the profile popup for its hx-select-oob. *@
+<button type="button" class="kb-um-btn" id="kb-um-btn" title="@UserContext.FullName" aria-label="Account menu" aria-haspopup="menu" aria-expanded="false" data-user-menu-toggle>
+    <partial name="_AccountAvatar" />
+    <svg class="kb-um-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
+</button>

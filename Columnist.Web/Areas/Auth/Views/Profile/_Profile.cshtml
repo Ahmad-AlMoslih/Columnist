@@ -1,0 +1,137 @@
+@model Columnist.Users.Features.Profile.Queries.GetProfile.Models.GetProfileModel
+@using Columnist.Users.Features.Profile.Commands.ChangePassword
+@using Columnist.Users.Features.Profile.Commands.SaveFullName
+@inject Columnist.Web.Application.Teams.CurrentTeams CurrentTeams
+@{
+    var teams = await CurrentTeams.GetAsync();
+    var team = teams.IsSuccess ? teams.Data!.Teams.FirstOrDefault(t => t.IsCurrent) : null;
+    var passwordOpen = ViewData["PasswordOpen"] is true;
+    var hasPhoto = Model.PhotoUrl is not null;
+}
+@* Body of the account menu's "Profile" popup (#kb-profile-modal in _Layout). Every form swaps #kb-profile and, with
+   hx-select-oob, the account menu's button and header (rendered below, outside #kb-profile). *@
+<div class="pf" id="kb-profile">
+    <div class="kb-task-form-head">
+        <h2 class="kb-task-form-title" id="kb-profile-title">Profile</h2>
+        <button type="button" class="kb-view-close" data-bs-dismiss="modal" aria-label="Close"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+    </div>
+
+    <div class="pf-photo">
+        <span class="pf-avatar">
+            @if (hasPhoto)
+            {
+                <img class="kb-photo" data-lightbox src="@Model.PhotoUrl" alt="Profile photo" />
+            }
+            else
+            {
+                @Model.Initials
+            }
+        </span>
+        <div class="pf-photo-side">
+            <div class="pf-photo-actions">
+                <form method="post" enctype="multipart/form-data" asp-area="Auth" asp-controller="Profile" asp-action="SavePhoto"
+                      hx-post="@Url.Action("SavePhoto", "Profile", new { area = "Auth" })" hx-encoding="multipart/form-data" hx-trigger="change"
+                      hx-target="#kb-profile" hx-select="#kb-profile" hx-select-oob="#kb-um-btn,#kb-um-head" hx-swap="outerHTML">
+                    <input type="file" name="photo" accept=".jpg,.jpeg,.png" hidden data-profile-photo-input />
+                    <button type="button" class="kb-btn-secondary" data-profile-photo-pick>@(hasPhoto ? "Change photo" : "Upload photo")</button>
+                </form>
+                @if (hasPhoto)
+                {
+                    <form method="post" asp-area="Auth" asp-controller="Profile" asp-action="RemovePhoto"
+                          hx-post="@Url.Action("RemovePhoto", "Profile", new { area = "Auth" })"
+                          hx-target="#kb-profile" hx-select="#kb-profile" hx-select-oob="#kb-um-btn,#kb-um-head" hx-swap="outerHTML">
+                        <button type="submit" class="kb-btn-secondary pf-remove">Remove</button>
+                    </form>
+                }
+            </div>
+            <p class="pf-hint">JPG or PNG, up to 2 MB.</p>
+        </div>
+    </div>
+
+    <form method="post" asp-area="Auth" asp-controller="Profile" asp-action="SaveName"
+          hx-post="@Url.Action("SaveName", "Profile", new { area = "Auth" })"
+          hx-target="#kb-profile" hx-select="#kb-profile" hx-select-oob="#kb-um-btn,#kb-um-head" hx-swap="outerHTML">
+        <div class="mb-3">
+            <label class="form-label" for="pf-full-name">Full name</label>
+            <input id="pf-full-name" name="fullName" class="form-control" value="@Model.FullName" maxlength="@SaveFullNameCommand.FullNameMaxLength" required autocomplete="name" />
+            @Html.ValidationMessage(nameof(SaveFullNameCommand.FullName), null, new { @class = "text-danger" })
+        </div>
+        <div class="mb-3">
+            <label class="form-label" for="pf-username">Username</label>
+            <div class="pf-locked">
+                <input id="pf-username" class="form-control" value="@Model.Username" disabled />
+                <svg class="pf-lock" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+            </div>
+            <p class="pf-hint">Your username can't be changed.</p>
+        </div>
+        <div class="mb-3">
+            <label class="form-label" for="pf-email">Email</label>
+            <div class="pf-locked">
+                <input id="pf-email" class="form-control" value="@Model.Email" disabled />
+                <svg class="pf-lock" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+            </div>
+            <p class="pf-hint">Your email can't be changed.</p>
+        </div>
+        @if (team is not null)
+        {
+            <div class="mb-3">
+                <div class="form-label">Role · Team</div>
+                <div class="pf-readonly">@(team.IsOwner ? "Super Admin" : "Member") · @team.Name</div>
+            </div>
+        }
+        <div class="pf-actions">
+            <button type="submit" class="kb-btn-primary">Save changes</button>
+        </div>
+    </form>
+
+    <div class="pf-password">
+        <button type="button" class="kb-btn-secondary" data-profile-password-open hidden="@passwordOpen">Change password</button>
+        <form method="post" asp-area="Auth" asp-controller="Profile" asp-action="ChangePassword" data-profile-password hidden="@(!passwordOpen)"
+              hx-post="@Url.Action("ChangePassword", "Profile", new { area = "Auth" })"
+              hx-target="#kb-profile" hx-select="#kb-profile" hx-select-oob="#kb-um-btn,#kb-um-head" hx-swap="outerHTML">
+            <div class="mb-3">
+                <label class="form-label" for="pf-current-password">Current password</label>
+                <input id="pf-current-password" name="currentPassword" type="password" class="form-control" required autocomplete="current-password" />
+                @Html.ValidationMessage(nameof(ChangePasswordCommand.CurrentPassword), null, new { @class = "text-danger" })
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="pf-new-password">New password</label>
+                <input id="pf-new-password" name="newPassword" type="password" class="form-control" required minlength="@ChangePasswordCommand.PasswordMinLength" maxlength="@ChangePasswordCommand.PasswordMaxLength" autocomplete="new-password" />
+                <p class="pf-hint">At least @ChangePasswordCommand.PasswordMinLength characters</p>
+                @Html.ValidationMessage(nameof(ChangePasswordCommand.NewPassword), null, new { @class = "text-danger" })
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="pf-confirm-password">Confirm new password</label>
+                <input id="pf-confirm-password" name="confirmPassword" type="password" class="form-control" required maxlength="@ChangePasswordCommand.PasswordMaxLength" autocomplete="new-password" />
+                @Html.ValidationMessage(nameof(ChangePasswordCommand.ConfirmPassword), null, new { @class = "text-danger" })
+            </div>
+            <div class="pf-actions">
+                <button type="button" class="kb-btn-secondary" data-profile-password-cancel>Cancel</button>
+                <button type="submit" class="kb-btn-primary">Update password</button>
+            </div>
+        </form>
+    </div>
+
+    @if (TempData["Message"] is not null || TempData["Error"] is not null)
+    {
+        <div class="kb-toast-stack">
+            @if (TempData["Message"] is string success)
+            {
+                <div class="kb-toast kb-toast-success" data-toast-type="success" role="status" aria-live="polite">
+                    <span class="kb-toast-text">@success</span>
+                    <button type="button" class="kb-toast-close" aria-label="Close">&times;</button>
+                </div>
+            }
+            @if (TempData["Error"] is string error)
+            {
+                <div class="kb-toast kb-toast-error" data-toast-type="error" role="alert">
+                    <span class="kb-toast-text">@error</span>
+                    <button type="button" class="kb-toast-close" aria-label="Close">&times;</button>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<partial name="_AccountMenuButton" />
+<partial name="_AccountMenuHead" />

@@ -23,6 +23,10 @@ public static class AuthCookie
         response.Cookies.Append(RefreshName, result.RefreshToken, Options(result.RefreshTokenExpiresAt));
     }
 
+    // Replaces only the JWT; the refresh token is kept.
+    public static void AppendToken(HttpResponse response, string token) =>
+        response.Cookies.Append(Name, token, Options());
+
     public static void Delete(HttpResponse response)
     {
         response.Cookies.Delete(Name, Options());

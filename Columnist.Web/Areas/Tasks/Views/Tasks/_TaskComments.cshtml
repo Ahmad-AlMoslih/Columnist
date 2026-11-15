@@ -1,0 +1,84 @@
+@model Columnist.Tasks.Features.Tasks.Queries.GetTaskComments.Models.GetTaskCommentsModel
+@using Columnist.Tasks.Features.Tasks.Commands.SaveComment
+
+<section id="kb-comments" class="kb-comments" aria-labelledby="kb-comments-title" data-comments-for="@Model.TaskToken" data-comment-count="@Model.Comments.Count" data-refresh-url="@Url.Action("Comments", new { token = Model.TaskToken })">
+    @if (TempData["Message"] is string success)
+    {
+        <div class="kb-toast-stack">
+            <div class="kb-toast kb-toast-success" data-toast-type="success" role="status" aria-live="polite">
+                <span class="kb-toast-text">@success</span>
+                <button type="button" class="kb-toast-close" aria-label="Close">&times;</button>
+            </div>
+        </div>
+    }
+    @if (TempData["Error"] is string error)
+    {
+        <div class="kb-toast-stack">
+            <div class="kb-toast kb-toast-error" data-toast-type="error" role="alert">
+                <span class="kb-toast-text">@error</span>
+                <button type="button" class="kb-toast-close" aria-label="Close">&times;</button>
+            </div>
+        </div>
+    }
+
+    <div class="kb-comments-head">
+        <h3 class="kb-comments-title" id="kb-comments-title">Comments</h3>
+        <span class="kb-comments-count" data-comments-header>@Model.Comments.Count</span>
+    </div>
+
+    <form class="kb-comment-form" asp-action="SaveComment" method="post"
+          hx-post="@Url.Action("SaveComment")" hx-target="#kb-comments" hx-swap="outerHTML">
+        <input type="hidden" name="taskToken" value="@Model.TaskToken" />
+        <textarea name="body" rows="3" class="kb-comment-input" placeholder="Write a comment…" aria-label="Write a comment" required maxlength="@SaveCommentCommand.BodyMaxLength"></textarea>
+        <div class="kb-comment-actions">
+            <button type="submit" class="kb-btn-primary">Post comment</button>
+        </div>
+    </form>
+
+    <div id="kb-comment-feed" data-comment-count="@Model.Comments.Count">
+    @if (Model.Comments.Count == 0)
+    {
+        <p class="kb-view-empty">No comments yet.</p>
+    }
+    else
+    {
+        <ol class="kb-comment-list">
+            @foreach (var comment in Model.Comments)
+            {
+                <li class="kb-comment @(comment.IsMine ? "kb-comment-mine" : null)">
+                    <span class="kb-comment-avatar" aria-hidden="true">@if (comment.PhotoUrl is not null) { <img class="kb-photo" src="@comment.PhotoUrl" alt="" /> } else { @comment.AuthorInitials }</span>
+                    <div class="kb-comment-content">
+                        <div class="kb-comment-meta">
+                            <span class="kb-comment-author">@comment.AuthorName</span>
+                            <span class="kb-comment-time">@comment.CreatedAt.ToString("dd MMM yyyy, HH:mm")@(comment.IsEdited ? " · edited" : null)</span>
+                            @if (comment.IsMine && !comment.IsEditing)
+                            {
+                                <button type="button" class="kb-comment-edit"
+                                        hx-get="@Url.Action("Comments", new { token = Model.TaskToken, edit = comment.Token })" hx-target="#kb-comments" hx-swap="outerHTML">Edit</button>
+                            }
+                        </div>
+                        @if (comment.IsEditing)
+                        {
+                            <form class="kb-comment-form" asp-action="SaveComment" method="post"
+                                  hx-post="@Url.Action("SaveComment")" hx-target="#kb-comments" hx-swap="outerHTML">
+                                <input type="hidden" name="taskToken" value="@Model.TaskToken" />
+                                <input type="hidden" name="commentToken" value="@comment.Token" />
+                                <textarea name="body" rows="2" class="kb-comment-input" aria-label="Edit comment" required maxlength="@SaveCommentCommand.BodyMaxLength">@comment.Body</textarea>
+                                <div class="kb-comment-actions">
+                                    <button type="button" class="kb-btn-secondary"
+                                            hx-get="@Url.Action("Comments", new { token = Model.TaskToken })" hx-target="#kb-comments" hx-swap="outerHTML">Cancel</button>
+                                    <button type="submit" class="kb-btn-primary">Save</button>
+                                </div>
+                            </form>
+                        }
+                        else
+                        {
+                            <p class="kb-comment-body">@comment.Body</p>
+                        }
+                    </div>
+                </li>
+            }
+        </ol>
+    }
+    </div>
+</section>

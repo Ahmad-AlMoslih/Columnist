@@ -1,5 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
-using Columnist.Auth.Features.Users.Commands.RefreshToken;
+using Columnist.Users.Features.Users.Commands.RefreshToken;
 using MediatR;
 
 namespace Columnist.Web.Application.Authentication;
@@ -15,6 +15,13 @@ public sealed class RefreshTokenMiddleware
 
     public async Task InvokeAsync(HttpContext context, IMediator mediator)
     {
+        // SignalR connections don't renew tokens; this avoids racing the page's own requests.
+        if (context.Request.Path.StartsWithSegments("/hubs"))
+        {
+            await _next(context);
+            return;
+        }
+
         var refreshToken = context.Request.Cookies[AuthCookie.RefreshName];
 
         if (!string.IsNullOrEmpty(refreshToken) && !HasLiveAccessToken(context.Request.Cookies[AuthCookie.Name]))

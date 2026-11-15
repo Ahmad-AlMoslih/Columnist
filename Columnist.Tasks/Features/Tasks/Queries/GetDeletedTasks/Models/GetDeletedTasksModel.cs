@@ -4,4 +4,5 @@ public sealed record GetDeletedTasksModel
 {
     public IReadOnlyList<DeletedTaskModel> Tasks { get; init; } = [];
     public string? Search { get; init; }
+    public string? BoardToken { get; init; }
 }

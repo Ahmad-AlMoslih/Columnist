@@ -1,0 +1,23 @@
+@using Columnist.Teams.Features.Boards.Commands.SaveBoard
+@using Columnist.Teams.Features.Boards.Queries.GetBoardSettings.Models
+@model (BoardColumnSettingsModel Column, IReadOnlyList<ColumnStatusModel> Statuses)
+@{
+    var column = Model.Column;
+    var color = Model.Statuses.FirstOrDefault(s => s.Id == column.StatusId)?.Color;
+}
+<li class="bs-col" data-column>
+    <span class="bs-grip" data-column-handle aria-hidden="true">⋮⋮</span>
+    <span class="bs-dot" data-column-dot style="@(string.IsNullOrEmpty(color) ? null : $"background:{color}")"></span>
+    <select class="bs-status" data-field="StatusName" data-column-status aria-label="Column colour">
+        @foreach (var status in Model.Statuses)
+        {
+            <option value="@status.Name" data-status-color="@status.Color" selected="@(status.Id == column.StatusId)">@status.Name</option>
+        }
+    </select>
+    <input type="hidden" data-field="Token" value="@column.Token" />
+    <input class="lb-input bs-name" data-field="Name" value="@column.Name" maxlength="@SaveBoardCommand.ColumnNameMaxLength" required aria-label="Column name" />
+    <span class="bs-count">@(column.TaskCount == 0 ? "Empty" : column.TaskCount == 1 ? "1 task" : $"{column.TaskCount} tasks")</span>
+    <button type="button" class="bs-del" data-column-delete disabled="@(column.TaskCount > 0)" title="@(column.TaskCount > 0 ? $"Move its {column.TaskCount} task(s) first" : "Delete column")" aria-label="Delete column">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"></path></svg>
+    </button>
+</li>

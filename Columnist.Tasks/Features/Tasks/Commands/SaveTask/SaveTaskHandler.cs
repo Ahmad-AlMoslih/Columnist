@@ -4,6 +4,7 @@ using Columnist.DataAccess;
 using Columnist.Services.Dms;
 using Columnist.Auth.Security.CurrentUser;
 using Columnist.Services.Tokens.Extensions;
+using Columnist.Services.Realtime;
 using MediatR;
 using System.Data;
 using Columnist.Utilities.Response;
@@ -13,15 +14,20 @@ namespace Columnist.Tasks.Features.Tasks.Commands.SaveTask;
 
 public sealed class SaveTaskHandler : IRequestHandler<SaveTaskCommand, ApiResponse<bool>>
 {
+    private const int AssigneeNotFoundResult = 3;
+    private const int TaskChangedByOtherResult = 4;
+
     private readonly IDbExecutor _db;
     private readonly IDmsService _dms;
     private readonly IUserContext _userContext;
+    private readonly IBoardNotifier _notifier;
 
-    public SaveTaskHandler(IDbExecutor db, IDmsService dms, IUserContext userContext)
+    public SaveTaskHandler(IDbExecutor db, IDmsService dms, IUserContext userContext, IBoardNotifier notifier)
     {
         _db = db;
         _dms = dms;
         _userContext = userContext;
+        _notifier = notifier;
     }
 
     public async Task<ApiResponse<bool>> Handle(SaveTaskCommand request, CancellationToken ct)
@@ -33,6 +39,19 @@ public sealed class SaveTaskHandler : IRequestHandler<SaveTaskCommand, ApiRespon
             if (decryptedId is null)
                 return ApiResponse<bool>.NotFound(ErrorMessages.TaskNotFound);
             taskId = decryptedId.Value;
+        }
+
+        byte[]? rowVersion = null;
+        if (!request.Task.IsNew && !string.IsNullOrEmpty(request.RowVersion))
+        {
+            try
+            {
+                rowVersion = Convert.FromBase64String(request.RowVersion);
+            }
+            catch (FormatException)
+            {
+                return ApiResponse<bool>.Conflict(ErrorMessages.TaskChangedByOther);
+            }
         }
 
         DateTime? originalDueDate = null;
@@ -57,12 +76,14 @@ public sealed class SaveTaskHandler : IRequestHandler<SaveTaskCommand, ApiRespon
         if (columnId is null)
             return ApiResponse<bool>.BadRequest(ErrorMessages.ChooseStatus, nameof(TaskFormDto.ColumnToken));
 
-        int? assigneeId = null;
-        if (!string.IsNullOrEmpty(request.Task.AssigneeToken))
+        var assigneeIds = new List<int>();
+        foreach (var token in request.Task.AssigneeTokens ?? [])
         {
-            assigneeId = request.Task.AssigneeToken.Decrypt<int>();
+            var assigneeId = token.Decrypt<int>();
             if (assigneeId is null)
-                return ApiResponse<bool>.BadRequest(ErrorMessages.InvalidAssignee, nameof(TaskFormDto.AssigneeToken));
+                return ApiResponse<bool>.BadRequest(ErrorMessages.AssigneeNotFound, nameof(TaskFormDto.AssigneeTokens));
+            if (!assigneeIds.Contains(assigneeId.Value))
+                assigneeIds.Add(assigneeId.Value);
         }
 
         // New files are deleted automatically on any early return or exception, unless committed.
@@ -74,8 +95,12 @@ public sealed class SaveTaskHandler : IRequestHandler<SaveTaskCommand, ApiRespon
                 return ApiResponse<bool>.BadRequest(upload.Error!, nameof(TaskFormDto.Images));
         }
 
-        var saved = await SaveTaskAsync(taskId, columnId.Value, assigneeId, request, uploads.FileNames, ct);
-        if (!saved)
+        var result = await SaveTaskAsync(taskId, columnId.Value, assigneeIds, rowVersion, request, uploads.FileNames, ct);
+        if (result == AssigneeNotFoundResult)
+            return ApiResponse<bool>.BadRequest(ErrorMessages.AssigneeNotFound, nameof(TaskFormDto.AssigneeTokens));
+        if (result == TaskChangedByOtherResult)
+            return ApiResponse<bool>.Conflict(ErrorMessages.TaskChangedByOther);
+        if (result != 0)
             return ApiResponse<bool>.BadRequest(ErrorMessages.SaveFailed);
 
         uploads.Commit();
@@ -83,7 +108,17 @@ public sealed class SaveTaskHandler : IRequestHandler<SaveTaskCommand, ApiRespon
         if (request.Task.RemoveImages)
             _dms.Delete(DmsFolder.Task, oldImages);
 
+        var boardId = await GetBoardIdByColumnAsync(columnId.Value, ct);
+        if (boardId is not null)
+            await _notifier.BoardChangedAsync(boardId.Value, ct);
         return ApiResponse<bool>.Success(true);
+    }
+
+    private async Task<int?> GetBoardIdByColumnAsync(int columnId, CancellationToken ct)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@ColumnId", columnId);
+        return await _db.QuerySingleOrDefaultAsync<int?>("dbo.GetBoardIdByColumn", parameters, ct);
     }
 
     private async Task<TaskDetailsDto?> GetTaskByIdAsync(int id, CancellationToken ct)
@@ -101,24 +136,33 @@ public sealed class SaveTaskHandler : IRequestHandler<SaveTaskCommand, ApiRespon
         return images.ToList();
     }
 
-    private async Task<bool> SaveTaskAsync(int taskId, int columnId, int? assigneeId, SaveTaskCommand request, IReadOnlyList<string> imageNames, CancellationToken ct)
+    // Returns the procedure's return value: 0 = saved, 3 = an assignee doesn't exist, 4 = changed by someone else since RowVersion.
+    private async Task<int> SaveTaskAsync(int taskId, int columnId, IReadOnlyList<int> assigneeIds, byte[]? rowVersion, SaveTaskCommand request, IReadOnlyList<string> imageNames, CancellationToken ct)
     {
         var images = new DataTable();
         images.Columns.Add("FileName", typeof(string));
         foreach (var fileName in imageNames)
             images.Rows.Add(fileName);
 
+        // dbo.UserIdList: UserId.
+        var assignees = new DataTable();
+        assignees.Columns.Add("UserId", typeof(int));
+        foreach (var userId in assigneeIds)
+            assignees.Rows.Add(userId);
+
         var parameters = new DynamicParameters();
         parameters.Add("@Id", taskId);
         parameters.Add("@ColumnId", columnId);
         parameters.Add("@Title", request.Task.Title);
         parameters.Add("@Description", request.Task.Description);
-        parameters.Add("@AssigneeId", assigneeId);
+        parameters.Add("@AssigneeIds", assignees.AsTableValuedParameter("dbo.UserIdList"));
         parameters.Add("@DueDate", request.Task.DueDate);
         parameters.Add("@RemoveImages", request.Task.RemoveImages);
         parameters.Add("@Images", images.AsTableValuedParameter("dbo.ImageNameList"));
         parameters.Add("@UserId", _userContext.UserId);
+        parameters.Add("@RowVersion", rowVersion, DbType.Binary, size: 8);
 
-        return await _db.ExecuteAsync("dbo.SaveTaskWithImages", parameters, ct);
+        await _db.ExecuteAsync("dbo.SaveTaskWithImages", parameters, ct);
+        return parameters.Get<int>("@ReturnValue");
     }
 }

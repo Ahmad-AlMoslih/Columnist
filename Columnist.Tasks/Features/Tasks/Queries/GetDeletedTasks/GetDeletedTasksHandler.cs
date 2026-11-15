@@ -5,6 +5,8 @@ using Columnist.Services.Tokens.Extensions;
 using Columnist.Tasks.Features.Tasks.Queries.GetDeletedTasks.Models;
 using Columnist.Utilities.Constants;
 using Columnist.Utilities.Response;
+using Columnist.Utilities.Response.Errors;
+using Dapper;
 using MediatR;
 
 namespace Columnist.Tasks.Features.Tasks.Queries.GetDeletedTasks;
@@ -22,11 +24,18 @@ public sealed class GetDeletedTasksHandler : IRequestHandler<GetDeletedTasksQuer
 
     public async Task<ApiResponse<GetDeletedTasksModel>> Handle(GetDeletedTasksQuery request, CancellationToken cancellationToken)
     {
-        var rows = await _db.QueryAsync<DeletedTaskDto>("dbo.GetDeletedTasks", ct: cancellationToken);
+        var boardId = request.BoardToken?.Decrypt<int>();
+        if (boardId is null)
+            return ApiResponse<GetDeletedTasksModel>.NotFound(ErrorMessages.BoardNotFound);
+
+        var parameters = new DynamicParameters();
+        parameters.Add("@BoardId", boardId.Value);
+
+        var rows = await _db.QueryAsync<DeletedTaskDto>("dbo.GetDeletedTasks", parameters, cancellationToken);
         var search = request.Search?.Trim();
         if (search is { Length: >= SearchRules.MinLength })
             rows = rows.Where(r => r.Title.Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
-        var images = (await _db.QueryAsync<DeletedTaskImageDto>("dbo.GetDeletedTaskImages", ct: cancellationToken))
+        var images = (await _db.QueryAsync<DeletedTaskImageDto>("dbo.GetDeletedTaskImages", parameters, cancellationToken))
             .ToLookup(i => i.TaskId);
 
         IReadOnlyList<DeletedTaskModel> tasks = rows
@@ -42,6 +51,6 @@ public sealed class GetDeletedTasksHandler : IRequestHandler<GetDeletedTasksQuer
             })
             .ToList();
 
-        return ApiResponse<GetDeletedTasksModel>.Success(new GetDeletedTasksModel { Tasks = tasks, Search = request.Search });
+        return ApiResponse<GetDeletedTasksModel>.Success(new GetDeletedTasksModel { Tasks = tasks, Search = request.Search, BoardToken = request.BoardToken });
     }
 }

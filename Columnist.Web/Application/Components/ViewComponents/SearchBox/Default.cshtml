@@ -1,10 +1,21 @@
 @{
-    var url = (string)ViewData["Url"]!;
-    var target = (string)ViewData["Target"]!;
+    var url = ViewData["Url"] as string;
+    var target = ViewData["Target"] as string;
     var value = ViewData["Value"] as string;
     var placeholder = (string)ViewData["Placeholder"]!;
     var hiddenFields = (IReadOnlyDictionary<string, string?>)ViewData["HiddenFields"]!;
     var minLength = (int)ViewData["MinLength"]!;
+    var clientOnly = (bool)ViewData["ClientOnly"]!;
+    var include = ViewData["Include"] as string;
+}
+@if (clientOnly)
+{
+    <div class="kb-search" role="search">
+        <input type="search" value="@value"
+               class="kb-search-input" placeholder="@placeholder" aria-label="@placeholder" autocomplete="off"
+               data-search-client />
+    </div>
+    return;
 }
 <form class="kb-search" role="search" method="get" action="@url">
     @foreach (var field in hiddenFields)
@@ -14,7 +25,7 @@
     <input type="search" name="search" value="@value"
            class="kb-search-input" placeholder="@placeholder" aria-label="@placeholder" autocomplete="off"
            hx-get="@url"
-           hx-include="closest form"
+           hx-include="@(include is null ? "closest form" : $"closest form, {include}")"
            hx-trigger="input[target.value.length === 0 || target.value.length >= @minLength] changed delay:300ms, search"
            hx-target="@target"
            hx-select="@target"

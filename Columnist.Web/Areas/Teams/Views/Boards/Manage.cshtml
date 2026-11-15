@@ -1,0 +1,68 @@
+@model Columnist.Web.Models.ManageBoardViewModel
+@using Columnist.Auth.Authorization
+@inject Columnist.Auth.Security.Boards.IBoardAccessService BoardAccess
+@{
+    ViewData["Title"] = Model.Title;
+    // Only the team's Super Admin can open this page, so "Manage board" is always allowed here.
+    var boardMenu = Model.BoardToken is null ? null : new Columnist.Web.Models.BoardUserMenuViewModel(
+        Model.BoardToken,
+        await BoardAccess.HasPermissionAsync(new BoardScope(BoardToken: Model.BoardToken), Permission.DeletedTasksRead),
+        await BoardAccess.HasPermissionAsync(new BoardScope(BoardToken: Model.BoardToken), Permission.LogsRead),
+        true);
+}
+
+@if (boardMenu?.Any == true)
+{
+    @section UserMenu {
+        <partial name="_BoardUserMenu" model="boardMenu" />
+    }
+}
+
+<div id="kb-toasts">
+    @if (TempData["Message"] is not null || TempData["Error"] is not null)
+    {
+        <div class="kb-toast-stack">
+            @if (TempData["Message"] is string success)
+            {
+                <div class="kb-toast kb-toast-success" data-toast-type="success" role="status" aria-live="polite">
+                    <span class="kb-toast-text">@success</span>
+                    <button type="button" class="kb-toast-close" aria-label="Close">&times;</button>
+                </div>
+            }
+            @if (TempData["Error"] is string error)
+            {
+                <div class="kb-toast kb-toast-error" data-toast-type="error" role="alert">
+                    <span class="kb-toast-text">@error</span>
+                    <button type="button" class="kb-toast-close" aria-label="Close">&times;</button>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<div class="lb-page">
+    @await Component.InvokeAsync("PageHeader", new
+    {
+        title = Model.Title,
+        subtitle = "Who can use this board and how its columns are set up.",
+        backUrl = Url.Action("Index", "Tasks", new { area = "Tasks", boardToken = Model.BoardToken }),
+        backLabel = "Back to board"
+    })
+
+    @if (Model.BoardToken is not null)
+    {
+        <nav class="bm-tabs" aria-label="Manage board" hx-boost="true" hx-target="#kb-page" hx-select="#kb-page" hx-swap="outerHTML show:window:top">
+            <a class="bm-tab @(Model.Section == "access" ? "active" : null)" aria-current="@(Model.Section == "access" ? "page" : null)" asp-action="Manage" asp-route-token="@Model.BoardToken" asp-route-section="access">Access</a>
+            <a class="bm-tab @(Model.Section == "columns" ? "active" : null)" aria-current="@(Model.Section == "columns" ? "page" : null)" asp-action="Manage" asp-route-token="@Model.BoardToken" asp-route-section="columns">Columns</a>
+        </nav>
+    }
+
+    @if (Model.Access is not null)
+    {
+        <partial name="~/Areas/Teams/Views/BoardAccess/_Access.cshtml" model="Model.Access" />
+    }
+    else
+    {
+        <partial name="_Columns" model="Model.Columns" />
+    }
+</div>

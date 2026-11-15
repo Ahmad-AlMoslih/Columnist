@@ -1,0 +1,91 @@
+@model Columnist.Web.Models.AppMenuViewModel
+@{
+    var current = Model.Teams.Teams.FirstOrDefault(t => t.IsCurrent);
+    var menuPage = ViewData["MenuPage"] as string;
+
+    // First letters of the first two words, uppercase.
+    static string Initials(string? name) =>
+        string.Concat((name ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(w => char.ToUpperInvariant(w[0])));
+
+    static int DaysLeft(DateTime? expiresAt) =>
+        expiresAt is null ? 0 : Math.Max(0, (int)Math.Ceiling((expiresAt.Value - DateTime.Now).TotalDays));
+}
+
+<div hx-boost="true" hx-target="#kb-page" hx-select="#kb-page" hx-swap="outerHTML show:window:top">
+    <section class="kb-drawer-section" aria-label="Teams">
+        <span class="kb-drawer-label">Team</span>
+        @foreach (var team in Model.Teams.Teams)
+        {
+            var tag = team.IsOwner ? "Super Admin" : $"{DaysLeft(team.AccessExpiresAt)} days";
+            if (team.IsCurrent)
+            {
+                <div class="kb-drawer-item kb-drawer-current">
+                    <span class="kb-team-badge">@Initials(team.Name)</span>
+                    <span>@team.Name</span>
+                    <svg class="kb-drawer-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-label="Current team"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+                    <span class="kb-drawer-tag">@tag</span>
+                </div>
+            }
+            else if (team.IsExpired)
+            {
+                <a class="kb-drawer-item" asp-area="Teams" asp-controller="Teams" asp-action="Index">
+                    <span class="kb-team-badge">@Initials(team.Name)</span>
+                    <span>@team.Name</span>
+                    <span class="kb-drawer-tag">Enter code</span>
+                </a>
+            }
+            else
+            {
+                <form method="post" asp-area="Teams" asp-controller="Teams" asp-action="Switch" hx-push-url="true">
+                    <input type="hidden" name="token" value="@team.Token" />
+                    <button type="submit" class="kb-drawer-item">
+                        <span class="kb-team-badge">@Initials(team.Name)</span>
+                        <span>@team.Name</span>
+                        <span class="kb-drawer-tag">@tag</span>
+                    </button>
+                </form>
+            }
+        }
+        <a class="kb-drawer-item @(menuPage == "lobby" ? "active" : null)" aria-current="@(menuPage == "lobby" ? "page" : null)" asp-area="Teams" asp-controller="Teams" asp-action="Index">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+            Create or join a team
+        </a>
+    </section>
+
+    @if (current is not null)
+    {
+        <div class="kb-drawer-sep"></div>
+        <section class="kb-drawer-section" aria-label="Boards">
+            <div class="kb-drawer-head">
+                <span class="kb-drawer-label">Boards</span>
+                @if (current.IsOwner)
+                {
+                    <button type="button" class="kb-drawer-add" data-new-board-open aria-label="New board">＋</button>
+                }
+            </div>
+            @foreach (var board in Model.Boards)
+            {
+                <a class="kb-drawer-item @(board.IsCurrent ? "active" : null)" aria-current="@(board.IsCurrent ? "page" : null)" asp-area="Tasks" asp-controller="Tasks" asp-action="Index" asp-route-boardToken="@board.Token">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 4v16M12 4v10M18 4v13"></path></svg>
+                    @board.Name
+                </a>
+            }
+            @if (Model.Boards.Count == 0)
+            {
+                <span class="kb-drawer-item" aria-disabled="true">No boards you can open yet</span>
+            }
+        </section>
+
+        @if (current.IsOwner)
+        {
+            <div class="kb-drawer-sep"></div>
+            <section class="kb-drawer-section" aria-label="Manage team">
+                <span class="kb-drawer-label">Manage (Super Admin)</span>
+                <a class="kb-drawer-item @(menuPage == "team-settings" ? "active" : null)" aria-current="@(menuPage == "team-settings" ? "page" : null)" asp-area="Teams" asp-controller="Teams" asp-action="Settings" asp-route-token="@current.Token">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"></path><circle cx="17" cy="9" r="2.5"></circle><path d="M16 14.2c3 .3 5.5 2.4 5.5 5.8"></path></svg>
+                    Team settings
+                </a>
+            </section>
+        }
+    }
+</div>

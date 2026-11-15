@@ -1,7 +1,7 @@
 using Columnist.API.Extensions;
-using Columnist.Auth.Features.Users.Commands.Login;
-using Columnist.Auth.Features.Users.Commands.Logout;
-using Columnist.Auth.Features.Users.Commands.RefreshToken;
+using Columnist.Users.Features.Users.Commands.Login;
+using Columnist.Users.Features.Users.Commands.Logout;
+using Columnist.Users.Features.Users.Commands.RefreshToken;
 using Columnist.Contracts.Requests;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;

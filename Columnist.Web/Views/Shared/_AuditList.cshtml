@@ -1,0 +1,40 @@
+@model IReadOnlyList<Columnist.Contracts.Dtos.AuditEntryModel>
+@{
+    var shown = (int)ViewData["AuditShown"]!;
+    var total = (int)ViewData["AuditTotal"]!;
+    var nextUrl = ViewData["AuditNextUrl"] as string;
+    var firstUrl = ViewData["AuditFirstUrl"] as string;   // set only after Load more (page > 1)
+    var lastDay = ViewData["AuditLastDay"] as DateOnly?;
+    var today = DateTime.Now.Date;   // the DB stores local times (SYSDATETIME)
+    var isFirst = true;
+}
+
+<div class="au-list" data-audit-rows>
+    @foreach (var day in Model.GroupBy(e => e.CreatedAt.Date))
+    {
+        var continuesDay = isFirst && lastDay == DateOnly.FromDateTime(day.Key);
+        isFirst = false;
+        if (!continuesDay)
+        {
+        <h2 class="au-day">@(day.Key == today ? "Today" : day.Key == today.AddDays(-1) ? "Yesterday" : day.Key.ToString("dddd d MMM"))</h2>
+        }
+        @foreach (var entry in day)
+        {
+            <partial name="_AuditEntry" model="entry" />
+        }
+    }
+    <div class="au-footer" data-audit-footer>
+        <span class="au-count">Showing @shown of @total</span>
+        <div class="au-footer-actions">
+        @if (nextUrl is not null)
+        {
+            <button type="button" class="kb-btn-secondary" hx-get="@nextUrl" hx-target="closest [data-audit-footer]" hx-select="[data-audit-rows] > *" hx-swap="outerHTML">Load more</button>
+        }
+        @if (firstUrl is not null)
+        {
+            @* Swaps the whole list back to the first page and scrolls up to it. *@
+            <button type="button" class="kb-btn-secondary" hx-get="@firstUrl" hx-target="closest [data-audit-rows]" hx-select="[data-audit-rows]" hx-swap="outerHTML show:top">Show less</button>
+        }
+        </div>
+    </div>
+</div>

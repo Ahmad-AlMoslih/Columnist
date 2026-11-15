@@ -1,5 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace Columnist.Contracts.Requests;
 
-public sealed record CreateTaskRequest([Required(ErrorMessage = "Title is required.")] string Title, string? Description, int ColumnId, int? AssigneeId, DateTime? DueDate);
+public sealed record CreateTaskRequest([Required(ErrorMessage = "Title is required.")] string Title, string? Description, int ColumnId, List<int>? AssigneeIds, DateTime? DueDate);

@@ -3,6 +3,7 @@ using Columnist.Contracts.Dtos;
 using Columnist.DataAccess;
 using Columnist.Auth.Security.CurrentUser;
 using Columnist.Services.Tokens.Extensions;
+using Columnist.Services.Realtime;
 using MediatR;
 using Columnist.Utilities.Response;
 using Columnist.Utilities.Response.Errors;
@@ -13,11 +14,13 @@ public sealed class DeleteTaskHandler : IRequestHandler<DeleteTaskCommand, ApiRe
 {
     private readonly IDbExecutor _db;
     private readonly IUserContext _userContext;
+    private readonly IBoardNotifier _notifier;
 
-    public DeleteTaskHandler(IDbExecutor db, IUserContext userContext)
+    public DeleteTaskHandler(IDbExecutor db, IUserContext userContext, IBoardNotifier notifier)
     {
         _db = db;
         _userContext = userContext;
+        _notifier = notifier;
     }
 
     public async Task<ApiResponse<bool>> Handle(DeleteTaskCommand request, CancellationToken cancellationToken)
@@ -34,7 +37,17 @@ public sealed class DeleteTaskHandler : IRequestHandler<DeleteTaskCommand, ApiRe
         if (!deleted)
             return ApiResponse<bool>.NotFound(ErrorMessages.TaskNotFound);
 
+        var boardId = await GetBoardIdByColumnAsync(task.ColumnId, cancellationToken);
+        if (boardId is not null)
+            await _notifier.BoardChangedAsync(boardId.Value, cancellationToken);
         return ApiResponse<bool>.Success(true);
+    }
+
+    private async Task<int?> GetBoardIdByColumnAsync(int columnId, CancellationToken ct)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@ColumnId", columnId);
+        return await _db.QuerySingleOrDefaultAsync<int?>("dbo.GetBoardIdByColumn", parameters, ct);
     }
 
     private async Task<TaskDetailsDto?> GetTaskByIdAsync(int id, CancellationToken ct)

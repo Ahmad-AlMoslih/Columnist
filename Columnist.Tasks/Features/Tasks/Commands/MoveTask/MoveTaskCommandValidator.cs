@@ -11,5 +11,6 @@ public sealed class MoveTaskCommandValidator : AbstractValidator<MoveTaskCommand
             .NotEmpty().WithMessage(ErrorMessages.TaskNotFound);
         RuleFor(x => x.ColumnToken)
             .NotEmpty().WithMessage(ErrorMessages.ChooseStatus);
+        RuleFor(x => x.Position).GreaterThan(0).WithMessage(ErrorMessages.TaskNotFound);
     }
 }

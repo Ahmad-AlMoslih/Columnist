@@ -1,0 +1,176 @@
+@model Columnist.Teams.Features.Teams.Queries.GetTeamSettings.Models.GetTeamSettingsModel
+@using Columnist.Teams.Features.Teams.Commands.SaveTeam
+@using Columnist.Teams.Features.Teams.Queries.GetTeamLogs.Models
+@{
+    ViewData["Title"] = "Team settings";
+    var logs = (GetTeamLogsModel)ViewData["TeamLogs"]!;
+    var logsUrl = Url.Action("Settings", "Teams", new { area = "Teams" });
+    var logsShown = (logs.Page - 1) * 20 + logs.Entries.Count;
+    var logCategories = new[] { ("", "All"), ("Task", "Tasks"), ("Board", "Board"), ("Access", "Access"), ("Team", "Team") };
+    var codeLeft = Model.InviteCodeExpiresAt - DateTime.Now;
+    if (codeLeft < TimeSpan.Zero)
+        codeLeft = TimeSpan.Zero;
+
+    static string Plural(int count, string word) => $"{count} {word}{(count == 1 ? "" : "s")}";
+}
+
+<div id="kb-toasts">
+    @if (TempData["Message"] is not null || TempData["Error"] is not null)
+    {
+        <div class="kb-toast-stack">
+            @if (TempData["Message"] is string success)
+            {
+                <div class="kb-toast kb-toast-success" data-toast-type="success" role="status" aria-live="polite">
+                    <span class="kb-toast-text">@success</span>
+                    <button type="button" class="kb-toast-close" aria-label="Close">&times;</button>
+                </div>
+            }
+            @if (TempData["Error"] is string error)
+            {
+                <div class="kb-toast kb-toast-error" data-toast-type="error" role="alert">
+                    <span class="kb-toast-text">@error</span>
+                    <button type="button" class="kb-toast-close" aria-label="Close">&times;</button>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<div class="lb-page">
+    @await Component.InvokeAsync("PageHeader", new
+    {
+        title = "Team settings",
+        subtitle = $"{Model.Name} · name, invite code, members and logs.",
+        backUrl = (string?)null
+    })
+
+    <div class="ts-grid">
+        <section class="ts-card">
+            <h2 class="ts-label">Team name</h2>
+            <form class="ts-inline" asp-area="Teams" asp-controller="Teams" asp-action="Rename" method="post">
+                <input type="hidden" name="token" value="@Model.Token" />
+                <input name="name" value="@Model.Name" class="lb-input" maxlength="@SaveTeamCommand.NameMaxLength" required aria-label="Team name" />
+                <button type="submit" class="kb-btn-primary">Rename</button>
+            </form>
+        </section>
+
+        <section class="ts-card">
+            <h2 class="ts-label">Today's invite code</h2>
+            <div class="ts-inline">
+                <div class="ts-code">@Model.InviteCode</div>
+                <button type="button" class="kb-btn-secondary" data-copy-text="@Model.InviteCode"><span data-copy-label>Copy</span></button>
+            </div>
+            <p class="ts-note">A new code every 24 hours (this one changes in @((int)codeLeft.TotalHours) h @codeLeft.Minutes m). Anyone with it can join until then. Members who don't use the app for 30 days lose access and need a new code.</p>
+        </section>
+
+        <section class="ts-card ts-wide">
+            <h2 class="ts-label">Members · @Model.Members.Count</h2>
+            <div>
+                @foreach (var member in Model.Members)
+                {
+                    <div class="ts-row">
+                        <span class="ts-av" aria-hidden="true">@if (member.PhotoUrl is not null) { <img class="kb-photo" src="@member.PhotoUrl" alt="" /> } else { @member.Initials }</span>
+                        <div class="ts-person">
+                            <strong>@member.FullName@(member.IsOwner ? " (you)" : null)</strong>
+                            <span>@member.Username</span>
+                        </div>
+                        @if (member.IsOwner)
+                        {
+                            <span class="lb-pill lb-pill-accent">Super Admin</span>
+                            <span class="ts-remove-space" aria-hidden="true"></span>
+                        }
+                        else
+                        {
+                            if (member.IsExpired)
+                            {
+                                <span class="ts-status ts-status-expired">Access ended · needs a new code</span>
+                            }
+                            else
+                            {
+                                <span class="ts-status">Active · @member.DaysLeft days left if unused</span>
+                            }
+                            <form method="post" asp-action="RemoveMember"
+                                  data-confirm-title="Remove from team?" data-confirm-yes="Remove"
+                                  data-confirm-text="@($"Remove {member.FullName} from {Model.Name}? {member.FullName} is on {Plural(member.BoardCount, "board")} and has {Plural(member.TaskCount, "task")}. Their tasks stay assigned to them, marked \"No access\". {member.FullName} is signed out, and today's invite code changes.")">
+                                <input type="hidden" name="token" value="@Model.Token" />
+                                <input type="hidden" name="memberToken" value="@member.UserToken" />
+                                <input type="hidden" name="name" value="@member.FullName" />
+                                <button type="submit" class="ts-remove" aria-label="Remove @member.FullName from the team">Remove</button>
+                            </form>
+                        }
+                    </div>
+                }
+            </div>
+            <p class="ts-note">Expired members keep their boards and permissions. They come back as soon as they enter the current code.</p>
+        </section>
+
+        <section class="ts-card ts-wide">
+        <h2 class="ts-label">Logs</h2>
+        <p class="ts-note">Everything that happened in this team, on every board.</p>
+        <form class="au-filters" method="get" action="@logsUrl"
+              hx-get="@logsUrl" hx-trigger="change, keyup changed delay:300ms from:[data-logs-search]"
+              hx-target="#kb-team-logs" hx-select="#kb-team-logs" hx-swap="outerHTML" hx-push-url="true">
+            <input type="hidden" name="token" value="@Model.Token" />
+            <input type="search" name="q" value="@logs.Search" class="kb-search-input au-search" placeholder="Search logs…" aria-label="Search logs" maxlength="100" autocomplete="off" data-logs-search />
+            <select name="actor" class="au-select" aria-label="Person">
+                <option value="">Everyone</option>
+                @foreach (var actor in logs.Actors)
+                {
+                    <option value="@actor.Token" selected="@actor.Selected">@actor.Name</option>
+                }
+            </select>
+            <div class="au-chips" role="radiogroup" aria-label="Category">
+                @foreach (var (value, label) in logCategories)
+                {
+                    <label class="au-chip">
+                        <input type="radio" name="category" value="@value" checked="@((logs.Category ?? "") == value)" />
+                        <span>@label</span>
+                    </label>
+                }
+            </div>
+        </form>
+
+        <div id="kb-team-logs">
+            @if (logs.Entries.Count == 0)
+            {
+                <p class="kb-deleted-empty">No logs match these filters.</p>
+            }
+            else
+            {
+                <partial name="_AuditList" model="logs.Entries" view-data='new ViewDataDictionary(ViewData)
+                {
+                    ["AuditShown"] = logsShown,
+                    ["AuditTotal"] = logs.TotalCount,
+                    ["AuditLastDay"] = logs.LastDay,
+                    ["AuditNextUrl"] = logsShown < logs.TotalCount
+                        ? Url.Action("Settings", "Teams", new { area = "Teams", token = Model.Token, category = logs.Category, actor = logs.ActorToken, q = logs.Search, page = logs.Page + 1, after = logs.Entries[^1].CreatedAt.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) })
+                        : null,
+                    ["AuditFirstUrl"] = logs.Page > 1
+                        ? Url.Action("Settings", "Teams", new { area = "Teams", token = Model.Token, category = logs.Category, actor = logs.ActorToken, q = logs.Search })
+                        : null
+                }' />
+            }
+        </div>
+        </section>
+    </div>
+
+    <section class="lb-card dz-card ts-danger">
+        <h2 class="lb-h dz-title">Danger zone</h2>
+        @if (Model.BoardCount > 0)
+        {
+            <p class="ts-note">Delete its @Model.BoardCount @(Model.BoardCount == 1 ? "board" : "boards") first.</p>
+        }
+        else
+        {
+            <p class="ts-note">Deleting the team removes its members and invite code for good.</p>
+        }
+        <button type="button" class="dz-btn" data-dz-open data-dz-form="dz-team-form" data-dz-name="@Model.Name"
+                data-dz-text="This deletes the team &quot;@Model.Name&quot;. Its members lose access. It can't be undone."
+                disabled="@(Model.BoardCount > 0)">Delete team</button>
+    </section>
+    <form id="dz-team-form" method="post" asp-action="Delete" hidden>
+        <input type="hidden" name="token" value="@Model.Token" />
+        <input type="hidden" name="confirmName" data-dz-field="confirmName" />
+    </form>
+    <partial name="_DangerConfirm" />
+</div>

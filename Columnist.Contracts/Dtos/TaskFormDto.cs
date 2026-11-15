@@ -8,6 +8,7 @@ public sealed class TaskFormDto
 {
     public const int TitleMaxLength = 200;
     public const int DescriptionMaxLength = 330;
+    public const int MaxAssignees = 20;
 
     public string? Token { get; set; }   // encrypted task id; null/empty = new task
 
@@ -18,14 +19,16 @@ public sealed class TaskFormDto
     [Display(Name = "Status")]
     public string? ColumnToken { get; set; }
 
-    [Display(Name = "Assignee")]
-    public string? AssigneeToken { get; set; }
+    [Display(Name = "Assignees")]
+    public List<string> AssigneeTokens { get; set; } = [];   // encrypted user ids
 
     [DataType(DataType.Date)]
     [Display(Name = "Due date")]
     public DateTime? DueDate { get; set; }
 
     public string? ReturnBoardToken { get; set; }
+
+    public string? RowVersion { get; set; }   // Base64 of Tasks.RowVersion; null for a new task
 
     [Display(Name = "Images")]
     public List<IFormFile>? Images { get; set; } = [];
@@ -39,7 +42,7 @@ public sealed class TaskFormDto
     public IReadOnlyList<TokenOptionDto> Columns { get; set; } = [];
 
     [BindNever]
-    public IReadOnlyList<TokenOptionDto> Users { get; set; } = [];
+    public IReadOnlyList<AssigneeOptionDto> Users { get; set; } = [];
 
     public bool IsNew => string.IsNullOrEmpty(Token);
 }

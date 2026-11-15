@@ -1,0 +1,54 @@
+@model Columnist.Teams.Features.Boards.Queries.GetBoardSettings.Models.GetBoardSettingsModel
+@using Columnist.Teams.Features.Boards.Commands.SaveBoard
+@using Columnist.Teams.Features.Boards.Queries.GetBoardSettings.Models
+@{
+    var newColumn = new BoardColumnSettingsModel { Token = null, Name = "", StatusId = Model.Statuses.FirstOrDefault()?.Id ?? 0, TaskCount = 0 };
+}
+
+<form class="bs-form" method="post" asp-controller="Boards" asp-action="Save" data-board-form>
+    <input type="hidden" name="BoardToken" value="@Model.BoardToken" />
+    <input type="hidden" name="TeamToken" value="@Model.TeamToken" />
+
+    <section class="lb-card">
+        <h2 class="lb-h">Board name</h2>
+        <input name="Name" class="lb-input" value="@Model.Name" maxlength="@SaveBoardCommand.NameMaxLength" required aria-label="Board name" />
+    </section>
+
+    <section class="lb-card">
+        <h2 class="lb-h">Columns</h2>
+        <p class="ts-note">Drag ⋮⋮ to reorder. A column can only be deleted when it has no tasks (deleted tasks count too).</p>
+        <ol class="bs-cols" data-columns>
+            @foreach (var column in Model.Columns)
+            {
+                <partial name="_ColumnRow" model="(column, Model.Statuses)" />
+            }
+        </ol>
+        <template data-column-template>
+            <partial name="_ColumnRow" model="(newColumn, Model.Statuses)" />
+        </template>
+        <div class="bs-add">
+            <input class="lb-input" data-new-column-name placeholder="New column name" maxlength="@SaveBoardCommand.ColumnNameMaxLength" aria-label="New column name" />
+            <button type="button" class="kb-btn-secondary" data-column-add>+ Add column</button>
+        </div>
+    </section>
+
+    <div class="bs-actions">
+        <a class="kb-btn-secondary" asp-area="Tasks" asp-controller="Tasks" asp-action="Index" asp-route-boardToken="@Model.BoardToken">Cancel</a>
+        <button type="submit" class="kb-btn-primary">@(Model.IsNew ? "Create board" : "Save board")</button>
+    </div>
+</form>
+
+@if (!Model.IsNew)
+{
+    <section class="lb-card dz-card">
+        <h2 class="lb-h dz-title">Danger zone</h2>
+        <p class="ts-note">Deleting this board removes its columns, every task (deleted ones too), comments and images for good. Everyone on it loses access.</p>
+        <button type="button" class="dz-btn" data-dz-open data-dz-form="dz-board-form" data-dz-name="@Model.Name"
+                data-dz-text="This deletes the board &quot;@Model.Name&quot; and everything on it. It can't be undone.">Delete board</button>
+    </section>
+    <form id="dz-board-form" method="post" asp-controller="Boards" asp-action="Delete" hidden>
+        <input type="hidden" name="token" value="@Model.BoardToken" />
+        <input type="hidden" name="confirmName" data-dz-field="confirmName" />
+    </form>
+    <partial name="_DangerConfirm" />
+}

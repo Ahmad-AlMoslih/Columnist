@@ -1,0 +1,20 @@
+@using Columnist.Teams.Features.Boards.Commands.SaveBoard
+@model (string? Name, string? Error)
+@* Body of the side panel's "New board" popup (#kb-new-board-modal in _Layout). Re-rendered with the error when creating fails. *@
+<form class="kb-modal-body kb-add-column-form" id="kb-new-board-body" method="post"
+      asp-area="Teams" asp-controller="Boards" asp-action="CreateFromMenu"
+      hx-post="@Url.Action("CreateFromMenu", "Boards", new { area = "Teams" })" hx-target="#kb-new-board-body" hx-select="#kb-new-board-body" hx-swap="outerHTML">
+    <h2 class="kb-modal-title" id="kb-new-board-title">New board</h2>
+    <div class="mb-3">
+        <label class="form-label" for="kb-new-board-name">Board name</label>
+        <input id="kb-new-board-name" name="name" class="form-control" value="@Model.Name" maxlength="@SaveBoardCommand.NameMaxLength" required autocomplete="off" data-new-board-name />
+    </div>
+    @if (!string.IsNullOrEmpty(Model.Error))
+    {
+        <div class="text-danger kb-add-column-error" role="alert">@Model.Error</div>
+    }
+    <div class="kb-modal-footer">
+        <button type="button" class="kb-btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="kb-btn-primary">Create board</button>
+    </div>
+</form>

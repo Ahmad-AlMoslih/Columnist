@@ -30,3 +30,19 @@ POST {{api}}/api/auth/refresh
 Content-Type: application/json
 
 { "refreshToken": "369B3298964578DAEECF54734584D257A6715BDD1D4BD95DA5995DF455B846F4" }
+
+@api = https://localhost:7001
+
+### 1. Log in as Ahmed
+# @name login
+POST {{api}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "ahmed",
+  "password": "User123!"
+}
+
+### 2. Tasks he can see
+GET {{api}}/api/tasks
+Authorization: Bearer {{login.response.body.$.accessToken}}

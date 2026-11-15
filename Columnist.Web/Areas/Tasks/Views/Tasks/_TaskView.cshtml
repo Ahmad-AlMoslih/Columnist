@@ -1,0 +1,152 @@
+@model Columnist.Tasks.Features.Tasks.Queries.GetTaskView.Models.GetTaskViewModel
+@using Columnist.Auth.Authorization
+@using Columnist.Web.Application.Extensions
+@inject Columnist.Auth.Security.Boards.IBoardAccessService BoardAccess
+@{
+    var canWrite = await BoardAccess.HasPermissionAsync(new BoardScope(TaskToken: Model.Token), Permission.TasksWrite);
+    var canDelete = await BoardAccess.HasPermissionAsync(new BoardScope(TaskToken: Model.Token), Permission.TasksDelete);
+    var inModal = Context.Request.IsHtmx();
+    var boardToken = ViewData["BoardToken"] as string;
+    var isDone = Model.StatusName.Equals("Done", StringComparison.OrdinalIgnoreCase);
+}
+
+<div class="kb-view">
+    <header class="kb-view-head">
+        <div class="kb-view-head-text">
+            <div class="kb-view-meta">
+                <span class="kb-status-pill" style="background:@Model.StatusColor">@Model.ColumnName</span>
+                <span class="kb-view-where">@Model.BoardName › @Model.ColumnName</span>
+            </div>
+            <h2 class="kb-view-title" id="kb-task-modal-title">@Model.Title</h2>
+        </div>
+        @if (canWrite)
+        {
+            <div class="kb-view-actions">
+                <a class="kb-btn-secondary kb-view-edit" asp-action="Save" asp-route-token="@Model.Token" asp-route-boardToken="@boardToken"
+                   hx-get="@Url.Action("Save", new { token = Model.Token, boardToken })" hx-target="#kb-task-modal-body" hx-swap="innerHTML">
+                    <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg>
+                    Edit
+                </a>
+                <button type="button" class="kb-btn-secondary kb-view-edit" data-cl-new-open>
+                    <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"></rect><path d="M8 12l3 3 5-6"></path></svg>
+                    Add checklist
+                </button>
+            </div>
+        }
+        @if (canDelete)
+        {
+            <form asp-action="Delete" method="post" class="kb-view-delete-form"
+                  data-confirm-title="Delete task?" data-confirm-yes="Delete"
+                  data-confirm-text="@($"\"{Model.Title}\" moves to Deleted tasks. It can be restored.")"
+                  hx-post="@(inModal ? Url.Action("Delete") : null)" hx-target="#kb-board-region" hx-select="#kb-board-region" hx-select-oob="#kb-toasts" hx-swap="outerHTML">
+                <input type="hidden" name="token" value="@Model.Token" />
+                <input type="hidden" name="boardToken" value="@boardToken" />
+                <button type="submit" class="kb-btn-secondary kb-view-delete">Delete</button>
+            </form>
+        }
+        @if (inModal)
+        {
+            <button type="button" class="kb-view-close" data-bs-dismiss="modal" aria-label="Close"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+        }
+    </header>
+
+    <div class="kb-view-body">
+        <div class="kb-view-main">
+            <section class="kb-view-section">
+                <span class="kb-view-label">Description</span>
+                @if (string.IsNullOrWhiteSpace(Model.Description))
+                {
+                    <p class="kb-view-empty">No description.</p>
+                }
+                else
+                {
+                    <p class="kb-view-desc">@Model.Description</p>
+                }
+            </section>
+
+            <partial name="_TaskChecklists" model="new Columnist.Tasks.Features.Checklists.Queries.GetTaskChecklists.GetTaskChecklistsModel { TaskToken = Model.Token, Checklists = Model.Checklists }" />
+
+            @if (Model.ImageUrls.Count > 0)
+            {
+                <section class="kb-view-section">
+                    <span class="kb-view-label">Images · @Model.ImageUrls.Count</span>
+                    <div class="kb-gallery">
+                        @foreach (var url in Model.ImageUrls)
+                        {
+                            <img data-lightbox src="@url" alt="Image of @Model.Title" loading="lazy" />
+                        }
+                    </div>
+                </section>
+            }
+
+            <div id="kb-comments" hx-get="@Url.Action("Comments", new { token = Model.Token })" hx-trigger="load" hx-swap="outerHTML">
+                <p class="kb-view-empty">Loading comments…</p>
+            </div>
+        </div>
+
+        <aside class="kb-view-side" aria-label="Task details">
+            <div class="kb-view-field">
+                <span class="kb-view-label">Assignees</span>
+                @if (Model.Assignees.Count == 0)
+                {
+                    @Html.Unassigned()
+                }
+                else
+                {
+                    <ul class="kb-view-assignees">
+                        @foreach (var assignee in Model.Assignees)
+                        {
+                            <li class="kb-person">
+                                @Html.AvatarCircle(assignee.FullName, assignee.Initials, noAccess: !assignee.HasAccess, photoUrl: assignee.PhotoUrl)
+                                <span class="kb-person-name">@assignee.FullName</span>
+                                @if (!assignee.HasAccess)
+                                {
+                                    <span class="kb-noaccess-tag">No access</span>
+                                }
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+            <div class="kb-view-field">
+                <span class="kb-view-label">Due date</span>
+                @Html.DueDateChip(Model.DueDate, isDone)
+            </div>
+            <div class="kb-view-field">
+                <span class="kb-view-label">Board</span>
+                <span class="kb-view-value">@Model.BoardName</span>
+            </div>
+            <div class="kb-view-audit">
+                <div><strong>Created</strong> by @(Model.CreatedByName ?? "unknown")<br /><span>@Model.CreatedAt.ToString("dd MMM yyyy, HH:mm")</span></div>
+                @if (Model.UpdatedAt is { } updatedAt)
+                {
+                    <div><strong>Updated</strong> by @(Model.UpdatedByName ?? "unknown")<br /><span>@updatedAt.ToString("dd MMM yyyy, HH:mm")</span></div>
+                }
+                @* Live refresh (live-board.js) morphs this region; always rendered so the first entry can appear. *@
+                <div id="kb-task-history" hx-ext="morph" data-task-history-url="@Url.Action("Details", new { token = Model.Token, boardToken })">
+                @if (Model.History.Count > 0)
+                {
+                    <div class="au-history">
+                        <button type="button" class="kb-btn-secondary au-history-toggle" data-history-toggle aria-expanded="false" aria-controls="kb-task-history-list">View history</button>
+                        <div id="kb-task-history-list" data-history hidden>
+                            <ol class="au-timeline">
+                                @for (var i = 0; i < Model.History.Count; i++)
+                                {
+                                    <li class="au-tl-item" hidden="@(i >= 5)" data-history-older="@(i >= 5)">
+                                        <span class="au-tl-dot" aria-hidden="true"></span>
+                                        <partial name="_AuditEntry" model="Model.History[i]" view-data='new ViewDataDictionary(ViewData) { ["AuditStyle"] = "timeline" }' />
+                                    </li>
+                                }
+                            </ol>
+                            @if (Model.History.Count > 5)
+                            {
+                                <button type="button" class="au-history-more" data-history-more>Show @(Model.History.Count - 5) older</button>
+                            }
+                        </div>
+                    </div>
+                }
+                </div>
+            </div>
+        </aside>
+    </div>
+</div>

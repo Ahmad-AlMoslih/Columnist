@@ -1,3 +1,5 @@
+using Columnist.Tasks.Features.Tasks.Models;
+
 namespace Columnist.Tasks.Features.Tasks.Queries.GetAllTasks;
 
 public sealed record GetAllTasksModel
@@ -9,7 +11,7 @@ public sealed record GetAllTasksModel
     public string BoardName { get; init; } = "";
     public string ColumnToken { get; init; } = "";
     public string ColumnName { get; init; } = "";
-    public string? AssigneeName { get; init; }
+    public IReadOnlyList<TaskAssigneeModel> Assignees { get; init; } = [];
     public DateTime? DueDate { get; init; }
     public DateTime CreatedAt { get; init; }
     public string StatusColor { get; init; } = "";

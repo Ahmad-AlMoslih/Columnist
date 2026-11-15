@@ -1,7 +1,9 @@
 using Columnist.API.ExceptionHandling;
 using Columnist.API.Extensions;
 using Columnist.Auth;
+using Columnist.Users;
 using Columnist.Auth.Security.Jwt;
+using Columnist.Auth.Security.Sessions;
 using Columnist.DataAccess;
 using Columnist.Services;
 using Columnist.Tasks;
@@ -11,6 +13,7 @@ using Columnist.Utilities.Response.Errors;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
 using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,6 +35,7 @@ builder.Services
     .AddAuthorizationBehavior()
     .AddValidationBehavior()
     .AddTasksModule()
+    .AddUsersModule()
     .AddAuthModule(builder.Configuration);
 
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtSettings>()!;
@@ -53,6 +57,19 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
         options.Events = new JwtBearerEvents
         {
+            OnTokenValidated = async context =>
+            {
+                var userIdValue = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+                var versionValue = context.Principal?.FindFirstValue("sv");
+                var sessions = context.HttpContext.RequestServices.GetRequiredService<ISessionVersionService>();
+
+                if (!int.TryParse(userIdValue, out var userId)
+                    || !int.TryParse(versionValue, out var version)
+                    || !await sessions.IsCurrentAsync(userId, version, context.HttpContext.RequestAborted))
+                {
+                    context.Fail("Session is no longer valid.");
+                }
+            },
             OnChallenge = async context =>
             {
                 context.HandleResponse();
@@ -90,3 +107,4 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+public partial class Program { }   // lets the integration tests start the API

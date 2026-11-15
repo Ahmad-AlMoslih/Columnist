@@ -15,14 +15,14 @@ public sealed class JwtTokenService : IJwtTokenService
         _settings = settings.Value;
     }
 
-    public string CreateToken(int userId, string username, string fullName, string role)
+    public string CreateToken(int userId, string username, string fullName, int sessionVersion)
     {
         var claims = new[]
         {
             new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
             new Claim(ClaimTypes.Name, username),
             new Claim("full_name", fullName),
-            new Claim(ClaimTypes.Role, role)
+            new Claim("sv", sessionVersion.ToString())
         };
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.Key));

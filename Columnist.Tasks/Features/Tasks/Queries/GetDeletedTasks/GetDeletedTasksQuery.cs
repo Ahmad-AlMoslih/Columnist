@@ -5,5 +5,8 @@ using MediatR;
 
 namespace Columnist.Tasks.Features.Tasks.Queries.GetDeletedTasks;
 
-[RequireRole(UserRoles.Admin)]
-public sealed record GetDeletedTasksQuery(string? Search = null) : IRequest<ApiResponse<GetDeletedTasksModel>>;
+[RequirePermission(Permission.DeletedTasksRead)]
+public sealed record GetDeletedTasksQuery(string? BoardToken, string? Search = null) : IRequest<ApiResponse<GetDeletedTasksModel>>, IBoardRequest
+{
+    public BoardScope GetBoardScope() => new(BoardToken: BoardToken);
+}

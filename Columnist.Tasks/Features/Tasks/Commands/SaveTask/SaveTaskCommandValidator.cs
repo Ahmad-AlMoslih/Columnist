@@ -22,5 +22,10 @@ public sealed class SaveTaskCommandValidator : AbstractValidator<SaveTaskCommand
         RuleFor(x => x.Task.ColumnToken)
             .NotEmpty().WithMessage(ErrorMessages.ChooseStatus)
             .OverridePropertyName(nameof(TaskFormDto.ColumnToken));
+
+        RuleFor(x => x.Task.AssigneeTokens)
+            .Must(tokens => tokens is null || tokens.Count <= TaskFormDto.MaxAssignees)
+            .WithMessage(string.Format(ErrorMessages.TooManyAssignees, TaskFormDto.MaxAssignees))
+            .OverridePropertyName(nameof(TaskFormDto.AssigneeTokens));
     }
 }

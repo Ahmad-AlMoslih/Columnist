@@ -6,5 +6,5 @@ public sealed record UserCredentialsDto
     public string Username { get; init; } = "";
     public string FullName { get; init; } = "";
     public string? PasswordHash { get; init; }
-    public string RoleName { get; init; } = "";
+    public int SessionVersion { get; init; }
 }

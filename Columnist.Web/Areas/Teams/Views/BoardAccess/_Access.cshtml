@@ -1,0 +1,114 @@
+@model Columnist.Teams.Features.BoardAccess.Queries.GetBoardAccess.Models.GetBoardAccessModel
+@inject Columnist.Auth.Security.CurrentUser.IUserContext UserContext
+@inject Columnist.Auth.Security.Photos.IUserPhotoService UserPhotos
+@{
+    var ownerInitials = string.Concat((UserContext.FullName ?? "")
+        .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Take(2)
+        .Select(word => char.ToUpperInvariant(word[0])));
+    var ownerPhotoUrl = (await UserPhotos.GetUrlsAsync()).GetValueOrDefault(UserContext.UserId ?? 0);
+}
+
+@await Component.InvokeAsync("SearchBox", new { url = Url.Action("Manage", "Boards", new { token = Model.BoardToken, section = "access" }), target = "#ba-results", value = Model.Search, placeholder = "Search people on this board…" })
+
+<div id="ba-results">
+    <p class="pm-count-text">@Model.Members.Count of @(Model.Members.Count + Model.Candidates.Count) team members can see this board</p>
+
+    <div class="ba-layout">
+        <section class="ba-list" data-ba-members data-ba-board-name="@Model.BoardName" aria-label="People on @Model.BoardName">
+            <div class="ba-list-head"><span>Person</span><span>Permissions on this board</span><span></span></div>
+            <div class="ba-drop-hint" data-ba-add-hint></div>
+
+            <div class="ba-row ba-row-owner">
+                <div class="ba-person">
+                    <span class="ba-av ba-av-owner">@if (ownerPhotoUrl is not null) { <img class="kb-photo" src="@ownerPhotoUrl" alt="" /> } else { @ownerInitials }</span>
+                    <div><strong>@UserContext.FullName (you)</strong><span>Super Admin</span></div>
+                </div>
+                <div class="ba-chips"><span class="ba-note">Every permission, always</span></div>
+                <svg class="pm-lock" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Locked"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+            </div>
+
+            @foreach (var m in Model.Members)
+            {
+                <div class="ba-row @(m.IsExpired ? "ba-row-expired" : null)" data-ba-row data-ba-member="@m.UserToken" data-ba-name="@m.FullName" data-ba-has="@(string.Join(",", m.Chips.Select(c => c.PermissionName)))">
+                    <div class="ba-person" draggable="true" data-ba-source="member" title="Drag to the right-hand panel to remove from this board">
+                        <span class="ba-av">@if (m.PhotoUrl is not null) { <img class="kb-photo" src="@m.PhotoUrl" alt="" /> } else { @m.Initials }</span>
+                        <div><strong>@m.FullName</strong><span>@(m.IsExpired ? "expired · access paused, kept" : m.DaysLeft <= 3 ? $"expires in {m.DaysLeft} day{(m.DaysLeft == 1 ? "" : "s")}" : "active")</span></div>
+                    </div>
+                    <div class="ba-chips">
+                        <span class="pm-chip pm-chip-role">View</span>
+                        @foreach (var c in m.Chips)
+                        {
+                            <span class="pm-chip pm-chip-allow" draggable="true" data-ba-source="chip" data-ba-permission="@c.PermissionName" data-ba-label="@c.Label"><span class="pm-chip-text">@c.Label</span><button type="button" class="pm-x" data-ba-remove-chip aria-label="Remove @c.Label">×</button></span>
+                        }
+                        <span class="ba-row-hint" data-ba-row-hint></span>
+                    </div>
+                    <button type="button" class="ba-remove" data-ba-remove-member aria-label="Remove @m.FullName from this board" title="Remove from board"
+                            data-confirm-title="Remove from this board?" data-confirm-yes="Remove"
+                            data-confirm-text="@(m.AssignedTaskCount > 0
+                                ? $"{m.FullName} has {m.AssignedTaskCount} {(m.AssignedTaskCount == 1 ? "task" : "tasks")} on {Model.BoardName}. They'll stay assigned to {m.FullName}, marked \"No access\", until someone reassigns them."
+                                : $"{m.FullName} will no longer see this board.")">×</button>
+                </div>
+            }
+
+            @if (Model.Members.Count == 0)
+            {
+                <p class="pm-empty">Nobody else can see this board yet. Drag a team member here.</p>
+            }
+        </section>
+
+        <aside class="ba-panel" data-ba-panel aria-label="Members and permissions to drag">
+            <div class="ba-remove-banner" data-ba-remove-banner></div>
+
+            <div class="pm-group">
+                <span class="pm-group-name">Not on this board · @Model.Candidates.Count</span>
+                <input type="search" class="ba-filter" data-ba-filter placeholder="Find a member…" aria-label="Find a team member" />
+                <div class="ba-candidates">
+                    @foreach (var c in Model.Candidates)
+                    {
+                        <span class="pm-drag" draggable="true" data-ba-source="person" data-ba-member="@c.UserToken" data-ba-name="@c.FullName"><span class="pm-grip" aria-hidden="true">⋮⋮</span><span class="ba-av ba-av-sm">@if (c.PhotoUrl is not null) { <img class="kb-photo" src="@c.PhotoUrl" alt="" /> } else { @c.Initials }</span>@c.FullName</span>
+                    }
+                    @if (Model.Candidates.Count == 0)
+                    {
+                        <span class="pm-none">Everyone in the team is on this board.</span>
+                    }
+                </div>
+            </div>
+
+            <div class="pm-group">
+                <span class="pm-group-name">Permissions</span>
+                @foreach (var p in Model.Permissions)
+                {
+                    <span class="pm-drag" draggable="true" data-ba-source="permission" data-ba-permission="@p.Name" data-ba-label="@p.Label" data-ba-requires="@p.RequiresName" data-ba-requires-label="@p.RequiresLabel" title="@p.Description"><span class="pm-grip" aria-hidden="true">⋮⋮</span>@p.Label</span>
+                }
+            </div>
+        </aside>
+    </div>
+
+    <form id="ba-add-form" method="post" hidden asp-controller="BoardAccess" asp-action="Add"
+          hx-post="@Url.Action("Add", "BoardAccess", new { area = "Teams" })" hx-target="#ba-results" hx-select="#ba-results" hx-select-oob="#kb-toasts" hx-swap="outerHTML">
+        <input type="hidden" name="boardToken" value="@Model.BoardToken" />
+        <input type="hidden" name="search" value="@Model.Search" />
+        <input type="hidden" name="memberToken" data-ba-field="member" />
+        <input type="hidden" name="name" data-ba-field="name" />
+    </form>
+
+    <form id="ba-remove-form" method="post" hidden asp-controller="BoardAccess" asp-action="Remove"
+          hx-post="@Url.Action("Remove", "BoardAccess", new { area = "Teams" })" hx-target="#ba-results" hx-select="#ba-results" hx-select-oob="#kb-toasts" hx-swap="outerHTML">
+        <input type="hidden" name="boardToken" value="@Model.BoardToken" />
+        <input type="hidden" name="search" value="@Model.Search" />
+        <input type="hidden" name="memberToken" data-ba-field="member" />
+        <input type="hidden" name="name" data-ba-field="name" />
+    </form>
+
+    <form id="ba-permission-form" method="post" hidden asp-controller="BoardAccess" asp-action="SetPermission"
+          hx-post="@Url.Action("SetPermission", "BoardAccess", new { area = "Teams" })" hx-target="#ba-results" hx-select="#ba-results" hx-select-oob="#kb-toasts" hx-swap="outerHTML">
+        <input type="hidden" name="boardToken" value="@Model.BoardToken" />
+        <input type="hidden" name="search" value="@Model.Search" />
+        <input type="hidden" name="memberToken" data-ba-field="member" />
+        <input type="hidden" name="permissionName" data-ba-field="permission" />
+        <input type="hidden" name="grant" data-ba-field="grant" />
+        <input type="hidden" name="name" data-ba-field="name" />
+        <input type="hidden" name="label" data-ba-field="label" />
+    </form>
+</div>

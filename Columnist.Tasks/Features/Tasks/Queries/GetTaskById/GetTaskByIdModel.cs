@@ -1,3 +1,5 @@
+using Columnist.Tasks.Features.Tasks.Models;
+
 namespace Columnist.Tasks.Features.Tasks.Queries.GetTaskById;
 
 public sealed record GetTaskByIdModel
@@ -6,6 +8,6 @@ public sealed record GetTaskByIdModel
     public string Title { get; init; } = "";
     public string? Description { get; init; }
     public string ColumnToken { get; init; } = "";
-    public string? AssigneeToken { get; init; }
+    public IReadOnlyList<TaskAssigneeModel> Assignees { get; init; } = [];
     public DateTime? DueDate { get; init; }
 }

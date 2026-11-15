@@ -1,4 +1,5 @@
 using Columnist.Services.Dms;
+using Columnist.Services.Realtime;
 using Columnist.Services.Tokens.Extensions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
@@ -14,6 +15,7 @@ public static class DependencyInjection
             .SetApplicationName("Columnist")
             .PersistKeysToFileSystem(new DirectoryInfo(keysPath));
         services.AddSingleton<IDmsService>(new DmsService(new DmsOptions { RootPath = dmsRootPath }));
+        services.AddSingleton<IBoardNotifier, NullBoardNotifier>();
         return services;
     }
 

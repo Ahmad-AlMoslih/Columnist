@@ -14,7 +14,7 @@
     <div class="kb-gallery">
         @foreach (var url in imageUrls)
         {
-            <img src="@url" alt="Task image" />
+            <img data-lightbox src="@url" alt="Task image" />
             <input type="hidden" name="ImageUrls" value="@url" />
         }
     </div>

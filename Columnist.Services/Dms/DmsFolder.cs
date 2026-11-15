@@ -2,5 +2,6 @@ namespace Columnist.Services.Dms;
 
 public enum DmsFolder
 {
-    Task
+    Task,
+    Profile
 }

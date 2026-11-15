@@ -1,4 +1,49 @@
 ﻿@model Columnist.Tasks.Features.Tasks.Queries.GetBoard.Models.GetBoardModel
+@using Columnist.Auth.Authorization
+@using System.Globalization
+@using Columnist.Tasks.Features.Tasks.Queries.GetBoard.Models
+@using Microsoft.AspNetCore.WebUtilities
+@inject Columnist.Auth.Security.Boards.IBoardAccessService BoardAccess
+@{
+    var canWrite = await BoardAccess.HasPermissionAsync(new BoardScope(BoardToken: Model.SelectedBoardToken), Permission.TasksWrite);
+    ViewData["Crumb"] = Model.SelectedBoardName;
+    var canSeeDeleted = Model.SelectedBoardToken is not null && await BoardAccess.HasPermissionAsync(new BoardScope(BoardToken: Model.SelectedBoardToken), Permission.DeletedTasksRead);
+    var canSeeLogs = Model.SelectedBoardToken is not null && await BoardAccess.HasPermissionAsync(new BoardScope(BoardToken: Model.SelectedBoardToken), Permission.LogsRead);
+    var canManage = Model.SelectedBoardToken is not null && ViewData["IsTeamOwner"] is true;
+    var columnStatuses = ViewData["ColumnStatuses"] as IReadOnlyList<Columnist.Teams.Features.Boards.Queries.GetBoardSettings.Models.ColumnStatusModel>;
+    var boardMenu = Model.SelectedBoardToken is null ? null : new Columnist.Web.Models.BoardUserMenuViewModel(Model.SelectedBoardToken, canSeeDeleted, canSeeLogs, canManage);
+    var boardUrl = Url.Action("Index", "Tasks", new { area = "Tasks" })!;
+
+    // The "Due" chip: "This week", "3 Nov – 10 Nov", "from 3 Nov", "until 10 Nov".
+    var filter = Model.Filter;
+    string Day(DateOnly date) => date.ToString("d MMM", CultureInfo.InvariantCulture);
+    var dueText = filter.Due switch
+    {
+        null => null,
+        BoardFilterModel.DueCustom when filter.From is not null && filter.To is not null => $"{Day(filter.From.Value)} – {Day(filter.To.Value)}",
+        BoardFilterModel.DueCustom when filter.From is not null => $"from {Day(filter.From.Value)}",
+        BoardFilterModel.DueCustom => $"until {Day(filter.To!.Value)}",
+        _ => BoardFilterModel.DueOptions.First(o => o.Key == filter.Due).Value
+    };
+}
+
+@section TopBar {
+    @if (canWrite && Model.SelectedBoardToken is not null)
+    {
+        <a class="kb-btn-primary" asp-area="Tasks" asp-controller="Tasks" asp-action="Save" asp-route-boardToken="@Model.SelectedBoardToken"
+           hx-get="@Url.Action("Save", "Tasks", new { area = "Tasks", boardToken = Model.SelectedBoardToken })" hx-target="#kb-task-modal-body" hx-swap="innerHTML">
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+            New task
+        </a>
+    }
+}
+
+@if (boardMenu?.Any == true)
+{
+    @section UserMenu {
+        <partial name="_BoardUserMenu" model="boardMenu" />
+    }
+}
 
 <div id="kb-toasts">
     @if (TempData["Message"] is not null || TempData["Error"] is not null)
@@ -6,14 +51,14 @@
         <div class="kb-toast-stack">
             @if (TempData["Message"] is string success)
             {
-                <div class="kb-toast kb-toast-success" role="status" aria-live="polite">
+                <div class="kb-toast kb-toast-success" data-toast-type="success" role="status" aria-live="polite">
                     <span class="kb-toast-text">@success</span>
                     <button type="button" class="kb-toast-close" aria-label="Close">&times;</button>
                 </div>
             }
             @if (TempData["Error"] is string error)
             {
-                <div class="kb-toast kb-toast-error" role="alert">
+                <div class="kb-toast kb-toast-error" data-toast-type="error" role="alert">
                     <span class="kb-toast-text">@error</span>
                     <button type="button" class="kb-toast-close" aria-label="Close">&times;</button>
                 </div>
@@ -31,11 +76,20 @@
     return;
 }
 
-<div id="kb-board-region">
+<div id="kb-board-region" hx-ext="morph" data-board-token="@Model.SelectedBoardToken">
     <div class="kb-page-header">
         <div>
             <h1 class="kb-page-title">@Model.SelectedBoardName</h1>
-            <p class="kb-subtitle">@Model.TaskCount tasks across @Model.Columns.Count columns</p>
+            <p class="kb-subtitle" id="kb-board-subtitle">
+                @if (Model.IsFiltered)
+                {
+                    @($"{Model.TaskCount} of {Model.TotalTaskCount} tasks across {Model.Columns.Count} columns")
+                }
+                else
+                {
+                    @($"{Model.TaskCount} tasks across {Model.Columns.Count} columns")
+                }
+            </p>
         </div>
         <nav class="kb-tabs" aria-label="Boards">
             @foreach (var tab in Model.Boards)
@@ -48,25 +102,70 @@
         </nav>
     </div>
 
-    @await Component.InvokeAsync("SearchBox", new
-    {
-        url = Url.Action("Index", "Tasks", new { area = "Tasks" }),
-        target = "#kb-board-columns",
-        value = Model.Search,
-        placeholder = "Search tasks by title…",
-        hiddenFields = new Dictionary<string, string?> { ["boardToken"] = Model.SelectedBoardToken }
-    })
+    @* The search and the filter each reload the columns with both their values; the two rows below come along (hx-select-oob) and the URL is pushed. *@
+    <div class="kb-board-toolbar" hx-select-oob="#kb-active-filters,#kb-board-subtitle,#kb-toasts" hx-push-url="true">
+        @await Component.InvokeAsync("SearchBox", new
+        {
+            url = boardUrl,
+            target = "#kb-board-columns",
+            value = Model.Search,
+            placeholder = "Search tasks by title…",
+            hiddenFields = new Dictionary<string, string?> { ["boardToken"] = Model.SelectedBoardToken },
+            include = "#kb-board-filter-form"
+        })
+        @await Component.InvokeAsync("BoardFilter", new { filter = Model.Filter, url = boardUrl, searchForm = ".kb-board-toolbar form.kb-search" })
+    </div>
 
-    <div id="kb-board-columns" class="kb-board">
+    @* Removing a chip clears that value in the filter panel (or the search box) and reloads (board-filter.js). *@
+    <div id="kb-active-filters" class="kb-active-filters" hidden="@(!Model.IsFiltered)">
+        @if (Model.IsFiltered)
+        {
+            <span class="kb-active-filters-count">Showing @Model.TaskCount of @Model.TotalTaskCount tasks</span>
+            @if (Model.IsSearchActive)
+            {
+                <button type="button" class="kb-filter-chip" data-filter-remove="search">Search: "@(Model.Search!.Trim())"<span aria-hidden="true">×</span></button>
+            }
+            @if (Model.Filter.MeSelected)
+            {
+                <button type="button" class="kb-filter-chip" data-filter-remove="assignees" data-filter-value="@Model.Filter.MeToken">Assignee: Me<span aria-hidden="true">×</span></button>
+            }
+            @foreach (var member in Model.Filter.Members.Where(m => m.Selected))
+            {
+                <button type="button" class="kb-filter-chip" data-filter-remove="assignees" data-filter-value="@member.Token">Assignee: @member.Name<span aria-hidden="true">×</span></button>
+            }
+            @if (Model.Filter.Unassigned)
+            {
+                <button type="button" class="kb-filter-chip" data-filter-remove="unassigned">Assignee: Unassigned<span aria-hidden="true">×</span></button>
+            }
+            @if (dueText is not null)
+            {
+                <button type="button" class="kb-filter-chip" data-filter-remove="due">Due: @dueText<span aria-hidden="true">×</span></button>
+            }
+            @foreach (var status in BoardFilterModel.StatusOptions.Where(o => Model.Filter.Statuses.Contains(o.Key)))
+            {
+                <button type="button" class="kb-filter-chip" data-filter-remove="status" data-filter-value="@status.Key">Status: @status.Value<span aria-hidden="true">×</span></button>
+            }
+            @if (Model.Filter.Unfinished)
+            {
+                <button type="button" class="kb-filter-chip" data-filter-remove="unfinished">Unfinished checklist<span aria-hidden="true">×</span></button>
+            }
+            <button type="button" class="kb-filter-clear" data-filter-clear>Clear all</button>
+        }
+    </div>
+
+    @* data-refresh-url: live-board.js reloads the board with the shown search and filter. Dragging is off while they are on. *@
+    <div id="kb-board-columns" class="kb-board" data-board-pan data-refresh-url="@QueryHelpers.AddQueryString(Url.Action("Index", new { boardToken = Model.SelectedBoardToken })!, Model.ToQuery())">
         @foreach (var column in Model.Columns)
         {
-            <section class="kb-column" aria-label="@column.Name">
-                <div class="kb-column-header">
-                    <span class="kb-status-pill" style="background:@column.StatusColor">@column.Name</span>
-                    <span class="kb-column-count">@column.Tasks.Count</span>
+            @* The status colours: the column background and the header band (none = the neutral look). *@
+            <section class="kb-column" aria-label="@column.Name"
+                     style="@(column.ColumnColor is null ? null : $"--kb-column-color:{column.ColumnColor};--kb-column-header-color:{column.HeaderColor}")">
+                <div class="kb-column-header @column.HeaderClass">
+                    <span class="kb-column-name">@column.Name</span>
+                    <span class="kb-column-count">@(Model.IsFiltered ? $"{column.Tasks.Count} of {column.TotalTaskCount}" : column.Tasks.Count.ToString())</span>
                 </div>
 
-                <div class="kb-column-body" data-column-token="@column.ColumnToken">
+                <div class="kb-column-body" data-column-token="@column.ColumnToken" data-can-move="@(canWrite && !Model.IsFiltered ? "true" : "false")">
                     @foreach (var task in column.Tasks)
                     {
                         <partial name="_TaskCard" model="task" view-data='new ViewDataDictionary(ViewData) { ["BoardToken"] = Model.SelectedBoardToken }' />
@@ -74,18 +173,29 @@
 
                     @if (column.Tasks.Count == 0)
                     {
-                        <div class="kb-empty">No tasks</div>
+                        <div class="kb-empty" data-column-empty>@(Model.IsFiltered ? "No matching tasks" : "No tasks")</div>
                     }
                 </div>
 
-                <a class="kb-add-task" asp-action="Save" asp-route-columnToken="@column.ColumnToken" asp-route-boardToken="@Model.SelectedBoardToken"
-                   hx-get="@Url.Action("Save", new { columnToken = column.ColumnToken, boardToken = Model.SelectedBoardToken })" hx-target="#kb-task-modal-body" hx-swap="innerHTML">
-                    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round">
-                        <path d="M12 5v14M5 12h14" />
-                    </svg>
-                    Add task
-                </a>
+                @if (canWrite)
+                {
+                    <a class="kb-add-task" asp-action="Save" asp-route-columnToken="@column.ColumnToken" asp-route-boardToken="@Model.SelectedBoardToken"
+                       hx-get="@Url.Action("Save", new { columnToken = column.ColumnToken, boardToken = Model.SelectedBoardToken })" hx-target="#kb-task-modal-body" hx-swap="innerHTML">
+                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round">
+                            <path d="M12 5v14M5 12h14" />
+                        </svg>
+                        Add task
+                    </a>
+                }
             </section>
+        }
+
+        @if (canManage)
+        {
+            <button type="button" class="kb-add-column" data-add-column-open>
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                Add another column
+            </button>
         }
     </div>
 
@@ -93,30 +203,9 @@
           hx-post="@Url.Action("Move")" hx-target="#kb-board-region" hx-select="#kb-board-region" hx-select-oob="#kb-toasts" hx-swap="outerHTML">
         <input type="hidden" name="token" />
         <input type="hidden" name="columnToken" />
+        <input type="hidden" name="position" />
         <input type="hidden" name="boardToken" value="@Model.SelectedBoardToken" />
     </form>
-</div>
-
-<div class="modal fade" id="kb-delete-modal" tabindex="-1" aria-labelledby="kb-delete-title" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content kb-modal">
-            <div class="kb-modal-body">
-                <div class="kb-modal-icon">
-                    <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6" />
-                    </svg>
-                </div>
-                <h2 class="kb-modal-title" id="kb-delete-title">Delete task?</h2>
-                <p class="kb-modal-text">
-                    <strong id="kb-delete-name"></strong> will be removed from the board.
-                </p>
-            </div>
-            <div class="kb-modal-footer">
-                <button type="button" class="kb-btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="kb-btn-danger" id="kb-delete-confirm">Delete task</button>
-            </div>
-        </div>
-    </div>
 </div>
 
 <div class="modal fade" id="kb-task-modal" tabindex="-1" aria-labelledby="kb-task-modal-title" aria-hidden="true">
@@ -126,3 +215,40 @@
         </div>
     </div>
 </div>
+
+@if (canManage && columnStatuses is not null)
+{
+    <div class="modal fade" id="kb-add-column-modal" tabindex="-1" aria-labelledby="kb-add-column-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content kb-modal">
+                <form class="kb-modal-body kb-add-column-form" data-add-column-form method="post"
+                      asp-area="Teams" asp-controller="Boards" asp-action="AddColumn"
+                      hx-post="@Url.Action("AddColumn", "Boards", new { area = "Teams" })" hx-target="#kb-board-region" hx-select="#kb-board-region" hx-select-oob="#kb-toasts" hx-swap="outerHTML">
+                    <h2 class="kb-modal-title" id="kb-add-column-title">Add a column</h2>
+                    <input type="hidden" name="boardToken" value="@Model.SelectedBoardToken" data-add-column-board />
+                    <div class="mb-3">
+                        <label class="form-label" for="kb-add-column-name">Column name</label>
+                        <input id="kb-add-column-name" name="name" class="form-control" maxlength="@Columnist.Teams.Features.Boards.Commands.SaveBoard.SaveBoardCommand.ColumnNameMaxLength" required autocomplete="off" data-add-column-name />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="kb-add-column-status">Status</label>
+                        <div class="kb-add-column-status">
+                            <span class="bs-dot" data-column-dot style="background:@columnStatuses.FirstOrDefault()?.Color"></span>
+                            <select id="kb-add-column-status" name="statusName" class="form-select" data-add-column-status>
+                                @foreach (var status in columnStatuses)
+                                {
+                                    <option value="@status.Name" data-color="@status.Color">@status.Name</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="text-danger kb-add-column-error" role="alert"><span id="kb-add-column-error"></span></div>
+                    <div class="kb-modal-footer">
+                        <button type="button" class="kb-btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="kb-btn-primary">Add column</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}

@@ -1,9 +1,12 @@
 using Columnist.Auth.Behaviors;
+using Columnist.Auth.Security.Boards;
 using Columnist.Auth.Security.CurrentUser;
 using Columnist.Auth.Security.Jwt;
 using Columnist.Auth.Security.Passwords;
+using Columnist.Auth.Security.Permissions;
+using Columnist.Auth.Security.Photos;
 using Columnist.Auth.Security.RefreshTokens;
-using FluentValidation;
+using Columnist.Auth.Security.Sessions;
 using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,14 +18,16 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddAuthModule(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly));
-        services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
         services.Configure<JwtSettings>(configuration.GetSection("Jwt"));
         services.AddHttpContextAccessor();
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
         services.AddSingleton<IRefreshTokenService, RefreshTokenService>();
         services.AddScoped<IUserContext, UserContext>();
+        services.AddScoped<IPermissionService, PermissionService>();
+        services.AddScoped<IBoardAccessService, BoardAccessService>();
+        services.AddScoped<ISessionVersionService, SessionVersionService>();
+        services.AddScoped<IUserPhotoService, UserPhotoService>();
         return services;
     }
 

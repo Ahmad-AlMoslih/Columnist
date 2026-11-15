@@ -1,0 +1,126 @@
+@model Columnist.Tasks.Features.Tasks.Queries.GetBoard.Models.BoardFilterModel
+@using System.Globalization
+@using Columnist.Tasks.Features.Tasks.Queries.GetBoard.Models
+@using Columnist.Web.Application.Components.Helpers
+@{
+    var url = (string)ViewData["Url"]!;
+    var searchForm = (string)ViewData["SearchForm"]!;
+    var count = Model.ActiveGroupCount;
+
+    static string FirstName(string name) => name.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? name;
+
+    // Closed dropdown: "Anyone", or the chosen names ("Me, Sara +1").
+    var chosen = new List<string>();
+    if (Model.MeSelected) chosen.Add("Me");
+    chosen.AddRange(Model.Members.Where(m => m.Selected).Select(m => FirstName(m.Name)));
+    if (Model.Unassigned) chosen.Add("Unassigned");
+    var assigneeText = chosen.Count == 0 ? "Anyone" : string.Join(", ", chosen.Take(2)) + (chosen.Count > 2 ? $" +{chosen.Count - 2}" : "");
+
+    var isCustom = Model.Due == BoardFilterModel.DueCustom;
+    var from = Model.From?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    var to = Model.To?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+}
+
+<div class="kb-filter" id="kb-board-filter" data-board-filter data-morph-skip>
+    <button type="button" class="kb-filter-btn" aria-expanded="false" aria-controls="kb-board-filter-form" data-filter-toggle>
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8.5V19l-4 2v-7.5z"></path></svg>
+        
+        <span class="kb-filter-badge" hidden="@(count == 0)" data-filter-badge>@count</span>
+    </button>
+
+    <form id="kb-board-filter-form" class="kb-filter-panel" method="get" action="@url" hidden data-filter-panel
+          hx-get="@url" hx-trigger="kb-filter-apply" hx-include="@searchForm"
+          hx-target="#kb-board-columns" hx-select="#kb-board-columns" hx-swap="outerHTML">
+
+        <div class="kb-filter-section">
+            <span class="kb-filter-label" id="kb-filter-assignee-label">Assignee</span>
+            <div class="kb-filter-select" data-filter-select>
+                <button type="button" class="kb-filter-select-btn" aria-haspopup="true" aria-expanded="false" aria-labelledby="kb-filter-assignee-label" data-filter-select-toggle>
+                    <span class="kb-filter-select-text" data-filter-select-text>@assigneeText</span>
+                    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+                </button>
+                <div class="kb-filter-menu" hidden data-filter-menu>
+                    @await Component.InvokeAsync("SearchBox", new { url = (string?)null, target = (string?)null, value = (string?)null, placeholder = "Search people…", clientOnly = true })
+                    <ul class="kb-filter-options">
+                        <li data-filter-option data-name="Me">
+                            <label class="kb-ap-option">
+                                <input type="checkbox" class="form-check-input" name="assignees" value="@Model.MeToken" checked="@Model.MeSelected" data-filter-input data-filter-label="Me" />
+                                <span class="kb-ap-option-name">Me</span>
+                            </label>
+                        </li>
+                        @foreach (var member in Model.Members)
+                        {
+                            <li data-filter-option data-name="@member.Name">
+                                <label class="kb-ap-option">
+                                    <input type="checkbox" class="form-check-input" name="assignees" value="@member.Token" checked="@member.Selected" data-filter-input data-filter-label="@FirstName(member.Name)" />
+                                    <span class="kb-ap-avatar">@Html.AvatarCircle(member.Name, noAccess: !member.HasAccess, photoUrl: member.PhotoUrl)</span>
+                                    <span class="kb-ap-option-name">@member.Name</span>
+                                    @if (!member.HasAccess)
+                                    {
+                                        <span class="kb-noaccess-tag">No access</span>
+                                    }
+                                </label>
+                            </li>
+                        }
+                        <li data-filter-option data-name="Unassigned">
+                            <label class="kb-ap-option">
+                                <input type="checkbox" class="form-check-input" name="unassigned" value="1" checked="@Model.Unassigned" data-filter-input data-filter-label="Unassigned" />
+                                <span class="kb-ap-option-name">Unassigned</span>
+                            </label>
+                        </li>
+                    </ul>
+                    <p class="kb-filter-nomatch" hidden data-filter-nomatch>No members match</p>
+                </div>
+            </div>
+        </div>
+
+        <fieldset class="kb-filter-section">
+            <legend class="kb-filter-label">Due date</legend>
+            <div class="kb-filter-pills">
+                @foreach (var option in BoardFilterModel.DueOptions)
+                {
+                    <label class="kb-filter-pill">
+                        <input type="radio" class="kb-filter-pill-input" name="due" value="@option.Key" checked="@(option.Key == (Model.Due ?? ""))" data-filter-input />
+                        <span>@option.Value</span>
+                    </label>
+                }
+            </div>
+            <div class="kb-filter-range" hidden="@(!isCustom)" data-filter-range>
+                <label class="kb-filter-range-field">
+                    <span>From</span>
+                    <input type="date" class="kb-filter-date" name="from" value="@from" max="@to" disabled="@(!isCustom)" data-filter-input data-filter-from />
+                </label>
+                <label class="kb-filter-range-field">
+                    <span>To</span>
+                    <input type="date" class="kb-filter-date" name="to" value="@to" min="@from" disabled="@(!isCustom)" data-filter-input data-filter-to />
+                </label>
+            </div>
+        </fieldset>
+
+        <fieldset class="kb-filter-section">
+            <legend class="kb-filter-label">Status</legend>
+            <div class="kb-filter-pills">
+                @foreach (var option in BoardFilterModel.StatusOptions)
+                {
+                    <label class="kb-filter-pill">
+                        <input type="checkbox" class="kb-filter-pill-input" name="status" value="@option.Key" checked="@Model.Statuses.Contains(option.Key)" data-filter-input />
+                        <span>@option.Value</span>
+                    </label>
+                }
+            </div>
+        </fieldset>
+
+        <fieldset class="kb-filter-section">
+            <legend class="kb-filter-label">Checklist</legend>
+            <label class="kb-filter-check">
+                <input type="checkbox" class="form-check-input" name="unfinished" value="1" checked="@Model.Unfinished" data-filter-input />
+                <span>Has unfinished items</span>
+            </label>
+        </fieldset>
+
+        <div class="kb-filter-footer">
+            <button type="button" class="kb-filter-clear" data-filter-clear>Clear all</button>
+            <button type="button" class="kb-btn-primary kb-filter-done" data-filter-close>Done</button>
+        </div>
+    </form>
+</div>

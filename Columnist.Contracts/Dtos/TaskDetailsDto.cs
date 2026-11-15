@@ -1,4 +1,4 @@
-﻿namespace Columnist.Contracts.Dtos;
+namespace Columnist.Contracts.Dtos;
 
 public sealed record TaskDetailsDto
 {
@@ -6,6 +6,6 @@ public sealed record TaskDetailsDto
     public string Title { get; init; } = "";
     public string? Description { get; init; }
     public int ColumnId { get; init; }
-    public int? AssigneeId { get; init; }
     public DateTime? DueDate { get; init; }
+    public byte[]? RowVersion { get; init; }
 }

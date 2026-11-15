@@ -1,6 +1,20 @@
 @model Columnist.Tasks.Features.Tasks.Queries.GetDeletedTasks.Models.GetDeletedTasksModel
+@using Columnist.Auth.Authorization
+@inject Columnist.Auth.Security.Boards.IBoardAccessService BoardAccess
 @{
     ViewData["Title"] = "Deleted tasks";
+    var boardMenu = Model.BoardToken is null ? null : new Columnist.Web.Models.BoardUserMenuViewModel(
+        Model.BoardToken,
+        await BoardAccess.HasPermissionAsync(new BoardScope(BoardToken: Model.BoardToken), Permission.DeletedTasksRead),
+        await BoardAccess.HasPermissionAsync(new BoardScope(BoardToken: Model.BoardToken), Permission.LogsRead),
+        ViewData["IsTeamOwner"] is true);
+}
+
+@if (boardMenu?.Any == true)
+{
+    @section UserMenu {
+        <partial name="_BoardUserMenu" model="boardMenu" />
+    }
 }
 
 <div id="kb-toasts">
@@ -9,14 +23,14 @@
         <div class="kb-toast-stack">
             @if (TempData["Message"] is string success)
             {
-                <div class="kb-toast kb-toast-success" role="status" aria-live="polite">
+                <div class="kb-toast kb-toast-success" data-toast-type="success" role="status" aria-live="polite">
                     <span class="kb-toast-text">@success</span>
                     <button type="button" class="kb-toast-close" aria-label="Close">&times;</button>
                 </div>
             }
             @if (TempData["Error"] is string error)
             {
-                <div class="kb-toast kb-toast-error" role="alert">
+                <div class="kb-toast kb-toast-error" data-toast-type="error" role="alert">
                     <span class="kb-toast-text">@error</span>
                     <button type="button" class="kb-toast-close" aria-label="Close">&times;</button>
                 </div>
@@ -26,14 +40,17 @@
 </div>
 
 <section id="kb-deleted-region" class="kb-deleted">
-    <div class="kb-deleted-head">
-        <h1 class="kb-deleted-title">Deleted tasks</h1>
-        <span class="kb-deleted-count">@Model.Tasks.Count</span>
-    </div>
+    @await Component.InvokeAsync("PageHeader", new
+    {
+        title = "Deleted tasks",
+        subtitle = $"{ViewData["BoardName"]} · deleted tasks can be restored to the end of their column.",
+        backUrl = Url.Action("Index", "Tasks", new { area = "Tasks", boardToken = Model.BoardToken }),
+        backLabel = "Back to board"
+    })
 
     @await Component.InvokeAsync("SearchBox", new
     {
-        url = Url.Action("Index", "DeletedTasks", new { area = "Tasks" }),
+        url = Url.Action("Index", "DeletedTasks", new { area = "Tasks", boardToken = Model.BoardToken }),
         target = "#kb-deleted-results",
         value = Model.Search,
         placeholder = "Search deleted tasks by title…"
@@ -62,7 +79,7 @@
                         <div class="kb-gallery">
                             @foreach (var url in task.ImageUrls)
                             {
-                                <img src="@url" alt="Image of @task.Title" loading="lazy" />
+                                <img data-lightbox src="@url" alt="Image of @task.Title" loading="lazy" />
                             }
                         </div>
                     }
@@ -71,11 +88,15 @@
                         Deleted by @(task.DeletedByName ?? "unknown") · @task.DeletedAt.ToLocalTime().ToString("dd MMM yyyy, HH:mm")
                     </p>
 
-                    <form asp-area="Tasks" asp-controller="DeletedTasks" asp-action="Restore" method="post" class="kb-restore-form" data-task-title="@task.Title"
-                          hx-post="@Url.Action("Restore", "DeletedTasks", new { area = "Tasks" })" hx-target="#kb-deleted-region" hx-select="#kb-deleted-region" hx-select-oob="#kb-toasts" hx-swap="outerHTML" hx-confirm="Restore task?">
-                        <input type="hidden" name="token" value="@task.Token" />
-                        <button type="submit" class="kb-restore">Restore</button>
-                    </form>
+                    @if (await BoardAccess.HasPermissionAsync(new BoardScope(TaskToken: task.Token), Permission.DeletedTasksWrite))
+                    {
+                        <form asp-area="Tasks" asp-controller="DeletedTasks" asp-action="Restore" method="post" data-confirm="restore" data-task-title="@task.Title"
+                              hx-post="@Url.Action("Restore", "DeletedTasks", new { area = "Tasks" })" hx-target="#kb-deleted-region" hx-select="#kb-deleted-region" hx-select-oob="#kb-toasts" hx-swap="outerHTML">
+                            <input type="hidden" name="token" value="@task.Token" />
+                            <input type="hidden" name="boardToken" value="@Model.BoardToken" />
+                            <button type="submit" class="kb-restore">Restore</button>
+                        </form>
+                    }
                 </article>
             }
         </div>

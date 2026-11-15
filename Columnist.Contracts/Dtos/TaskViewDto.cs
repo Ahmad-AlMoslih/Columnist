@@ -1,0 +1,18 @@
+namespace Columnist.Contracts.Dtos
+{
+    public sealed record TaskViewDto
+    {
+        public int Id { get; init; }
+        public string Title { get; init; } = "";
+        public string? Description { get; init; }
+        public string BoardName { get; init; } = "";
+        public string ColumnName { get; init; } = "";
+        public string StatusColor { get; init; } = "";
+        public string StatusName { get; init; } = "";
+        public DateTime? DueDate { get; init; }
+        public DateTime CreatedAt { get; init; }
+        public string? CreatedByName { get; init; }
+        public DateTime? UpdatedAt { get; init; }
+        public string? UpdatedByName { get; init; }
+    }
+}

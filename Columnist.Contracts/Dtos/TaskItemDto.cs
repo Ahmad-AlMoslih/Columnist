@@ -9,14 +9,15 @@ namespace Columnist.Contracts.Dtos
         public string BoardName { get; init; } = "";
         public int ColumnId { get; init; }
         public string ColumnName { get; init; } = "";
-        public string? AssigneeName { get; init; }
         public DateTime? DueDate { get; init; }
         public DateTime CreatedAt { get; init; }
 
         public string StatusColor { get; init; } = "";
+        public string StatusName { get; init; } = "";
 
         public string? FirstImageName { get; init; }
         public int ImageCount { get; init; }
+        public int CommentCount { get; init; }
 
     }
 }

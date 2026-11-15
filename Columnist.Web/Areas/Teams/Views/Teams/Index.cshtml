@@ -1,0 +1,156 @@
+@model Columnist.Teams.Features.Teams.Queries.GetMyTeams.Models.GetMyTeamsModel
+@using Columnist.Teams.Features.Teams.Commands.SaveTeam
+@using Columnist.Teams.Features.Boards.Commands.SaveBoard
+@inject Columnist.Auth.Security.CurrentUser.IUserContext UserContext
+@{
+    ViewData["Title"] = "Teams";
+    var firstName = UserContext.FullName?.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
+    var activeTeams = Model.Teams.Where(t => !t.IsExpired).ToList();
+}
+
+<div id="kb-toasts">
+    @if (TempData["Message"] is not null || TempData["Error"] is not null)
+    {
+        <div class="kb-toast-stack">
+            @if (TempData["Message"] is string success)
+            {
+                <div class="kb-toast kb-toast-success" data-toast-type="success" role="status" aria-live="polite">
+                    <span class="kb-toast-text">@success</span>
+                    <button type="button" class="kb-toast-close" aria-label="Close">&times;</button>
+                </div>
+            }
+            @if (TempData["Error"] is string error)
+            {
+                <div class="kb-toast kb-toast-error" data-toast-type="error" role="alert">
+                    <span class="kb-toast-text">@error</span>
+                    <button type="button" class="kb-toast-close" aria-label="Close">&times;</button>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<div class="lb-page">
+    @foreach (var team in Model.Teams.Where(t => t.IsExpired))
+    {
+        <div class="lb-notice" role="status">
+            <span>
+                <strong>Your access to @team.Name ended on @team.AccessExpiresAt?.ToString("d MMM").</strong>
+                Enter the team's current code below to get back in. Your boards, tasks and permissions are kept exactly as they were.
+            </span>
+        </div>
+    }
+
+    <div>
+        <h1 class="lb-title">Welcome, @firstName</h1>
+        <p class="lb-lead">
+            @(activeTeams.Count == 0
+                ? "You're not in a team yet. Start your own, or join one with a code."
+                : "Pick a team, start a new one, or join another with a code.")
+        </p>
+    </div>
+
+    @if (activeTeams.Count > 0)
+    {
+        <section class="lb-teams">
+            <h2 class="lb-h">Your teams</h2>
+            @foreach (var team in activeTeams)
+            {
+                var daysLeft = team.AccessExpiresAt is { } expires
+                    ? Math.Max(0, (int)Math.Ceiling((expires - DateTime.Now).TotalDays))
+                    : 0;
+
+                <div class="lb-team-row">
+                    <span class="lb-team-name">@team.Name</span>
+                    @if (team.IsOwner)
+                    {
+                        <span class="lb-pill lb-pill-accent">Super Admin</span>
+                    }
+                    else
+                    {
+                        <span class="lb-pill">Member · @daysLeft days left</span>
+                    }
+                    @if (team.IsCurrent)
+                    {
+                        <span class="lb-pill lb-pill-green">Current</span>
+                    }
+                    else
+                    {
+                        <form asp-area="Teams" asp-controller="Teams" asp-action="Switch" method="post">
+                            <input type="hidden" name="token" value="@team.Token" />
+                            <button type="submit" class="kb-btn-secondary">Open</button>
+                        </form>
+                    }
+                    @if (team.IsOwner)
+                    {
+                        <a class="kb-btn-secondary" asp-area="Teams" asp-controller="Teams" asp-action="Settings" asp-route-token="@team.Token">Settings</a>
+                    }
+                </div>
+            }
+        </section>
+    }
+
+    <div class="lb-grid">
+        <div class="lb-card">
+            <div class="lb-icon">
+                <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M19 8v6M22 11h-6" />
+                </svg>
+            </div>
+            <h2 class="lb-h">Create a team</h2>
+            <p class="lb-p">You become its Super Admin: you create the boards and decide who sees what.</p>
+            <form asp-area="Teams" asp-controller="Teams" asp-action="Create" method="post">
+                <label class="lb-label">
+                    Team name
+                    <input name="name" class="lb-input" maxlength="@SaveTeamCommand.NameMaxLength" required placeholder="e.g. Mobile Studio" />
+                </label>
+                <button type="submit" class="kb-btn-primary">Create team</button>
+            </form>
+        </div>
+
+        <div class="lb-card">
+            <div class="lb-icon">
+                <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                    <path d="M10 17l5-5-5-5" />
+                    <path d="M15 12H3" />
+                </svg>
+            </div>
+            <h2 class="lb-h">Join a team</h2>
+            <p class="lb-p">Ask the team's Super Admin for today's code. Codes change every 24 hours.</p>
+            <form asp-area="Teams" asp-controller="Teams" asp-action="Join" method="post">
+                <label class="lb-label">
+                    Invite code
+                    <input name="code" class="lb-input lb-code" required placeholder="K7Q4-MZ2P" autocomplete="off" />
+                </label>
+                <button type="submit" class="kb-btn-primary">Join team</button>
+            </form>
+            <p class="lb-small">Access ends after 30 days without using the app. After that, you need a new invite code.</p>
+        </div>
+
+        <div class="lb-card">
+            <div class="lb-icon">
+                <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9" />
+                    <path d="M9 3v18M15 10v11" />
+                    <path d="M19 2v6M16 5h6" />
+                </svg>
+            </div>
+            <h2 class="lb-h">Create a board</h2>
+            <p class="lb-p">Boards live in a team, so this creates your team and its first board in one step.</p>
+            <form asp-area="Teams" asp-controller="Teams" asp-action="Create" method="post">
+                <label class="lb-label">
+                    Team name
+                    <input name="name" class="lb-input" maxlength="@SaveTeamCommand.NameMaxLength" required placeholder="e.g. Mobile Studio" />
+                </label>
+                <label class="lb-label">
+                    Board name
+                    <input name="boardName" class="lb-input" maxlength="@SaveBoardCommand.NameMaxLength" required placeholder="e.g. App Launch" />
+                </label>
+                <button type="submit" class="kb-btn-secondary">Create team and board</button>
+            </form>
+        </div>
+    </div>
+</div>

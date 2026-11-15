@@ -1,7 +1,8 @@
-﻿using Dapper;
+using Dapper;
 using Columnist.Contracts.Dtos;
 using Columnist.DataAccess;
 using Columnist.Services.Tokens.Extensions;
+using Columnist.Tasks.Features.Tasks.Models;
 using MediatR;
 using Columnist.Utilities.Response;
 using Columnist.Utilities.Response.Errors;
@@ -27,10 +28,12 @@ public sealed class GetTaskByIdHandler : IRequestHandler<GetTaskByIdQuery, ApiRe
         if (task is null)
             return ApiResponse<GetTaskByIdModel>.NotFound(ErrorMessages.TaskNotFound);
 
-        return ApiResponse<GetTaskByIdModel>.Success(ToModel(task));
+        var assignees = await GetTaskAssigneesAsync(taskId.Value, null, cancellationToken);
+
+        return ApiResponse<GetTaskByIdModel>.Success(ToModel(task, assignees));
     }
 
-    private GetTaskByIdModel ToModel(TaskDetailsDto task)
+    private GetTaskByIdModel ToModel(TaskDetailsDto task, IReadOnlyList<TaskAssigneeDto> assignees)
     {
         return new GetTaskByIdModel
         {
@@ -38,7 +41,7 @@ public sealed class GetTaskByIdHandler : IRequestHandler<GetTaskByIdQuery, ApiRe
             Title = task.Title,
             Description = task.Description,
             ColumnToken = task.ColumnId.Encrypt(),
-            AssigneeToken = task.AssigneeId is null ? null : task.AssigneeId.Value.Encrypt(),
+            Assignees = assignees.Select(TaskAssigneeModel.From).ToList(),
             DueDate = task.DueDate
         };
     }
@@ -48,5 +51,13 @@ public sealed class GetTaskByIdHandler : IRequestHandler<GetTaskByIdQuery, ApiRe
         var parameters = new DynamicParameters();
         parameters.Add("@Id", id);
         return await _db.QuerySingleOrDefaultAsync<TaskDetailsDto>("dbo.GetTaskById", parameters, ct);
+    }
+
+    private async Task<IReadOnlyList<TaskAssigneeDto>> GetTaskAssigneesAsync(int? taskId, int? boardId, CancellationToken ct)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@TaskId", taskId);
+        parameters.Add("@BoardId", boardId);
+        return await _db.QueryAsync<TaskAssigneeDto>("dbo.GetTaskAssignees", parameters, ct);
     }
 }

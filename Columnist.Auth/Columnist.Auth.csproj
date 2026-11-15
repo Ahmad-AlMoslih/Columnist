@@ -8,8 +8,6 @@
 
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
-    <PackageReference Include="FluentValidation" Version="12.2.0" />
-    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.2.0" />
     <PackageReference Include="MediatR" Version="14.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.0" />
   </ItemGroup>
@@ -17,6 +15,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Columnist.Contracts\Columnist.Contracts.csproj" />
     <ProjectReference Include="..\Columnist.DataAccess\Columnist.DataAccess.csproj" />
+    <ProjectReference Include="..\Columnist.Services\Columnist.Services.csproj" />
     <ProjectReference Include="..\Columnist.Utilities\Columnist.Utilities.csproj" />
   </ItemGroup>
 

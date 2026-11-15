@@ -2,6 +2,7 @@ using Dapper;
 using Columnist.DataAccess;
 using Columnist.Auth.Security.CurrentUser;
 using Columnist.Services.Tokens.Extensions;
+using Columnist.Services.Realtime;
 using MediatR;
 using Columnist.Utilities.Response;
 using Columnist.Utilities.Response.Errors;
@@ -12,11 +13,13 @@ public sealed class MoveTaskHandler : IRequestHandler<MoveTaskCommand, ApiRespon
 {
     private readonly IDbExecutor _db;
     private readonly IUserContext _userContext;
+    private readonly IBoardNotifier _notifier;
 
-    public MoveTaskHandler(IDbExecutor db, IUserContext userContext)
+    public MoveTaskHandler(IDbExecutor db, IUserContext userContext, IBoardNotifier notifier)
     {
         _db = db;
         _userContext = userContext;
+        _notifier = notifier;
     }
 
     public async Task<ApiResponse<bool>> Handle(MoveTaskCommand request, CancellationToken cancellationToken)
@@ -32,11 +35,22 @@ public sealed class MoveTaskHandler : IRequestHandler<MoveTaskCommand, ApiRespon
         var parameters = new DynamicParameters();
         parameters.Add("@Id", taskId.Value);
         parameters.Add("@ColumnId", columnId.Value);
+        parameters.Add("@Position", request.Position);
         parameters.Add("@UserId", _userContext.UserId);
         var moved = await _db.ExecuteAsync("dbo.MoveTask", parameters, cancellationToken);
         if (!moved)
             return ApiResponse<bool>.NotFound(ErrorMessages.TaskNotFound);
 
+        var boardId = await GetBoardIdByColumnAsync(columnId.Value, cancellationToken);
+        if (boardId is not null)
+            await _notifier.BoardChangedAsync(boardId.Value, cancellationToken);
         return ApiResponse<bool>.Success(true);
+    }
+
+    private async Task<int?> GetBoardIdByColumnAsync(int columnId, CancellationToken ct)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@ColumnId", columnId);
+        return await _db.QuerySingleOrDefaultAsync<int?>("dbo.GetBoardIdByColumn", parameters, ct);
     }
 }

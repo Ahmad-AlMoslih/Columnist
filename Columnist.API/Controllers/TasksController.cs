@@ -1,4 +1,4 @@
-﻿using Columnist.API.Extensions;
+using Columnist.API.Extensions;
 using Columnist.Contracts.Dtos;
 using Columnist.Contracts.Requests;
 using Columnist.Services.Tokens.Extensions;
@@ -52,7 +52,7 @@ public sealed class TasksController : ControllerBase
             Title = request.Title.Trim(),
             Description = request.Description,
             ColumnToken = request.ColumnId.Encrypt(),
-            AssigneeToken = request.AssigneeId is null ? null : request.AssigneeId.Value.Encrypt(),
+            AssigneeTokens = (request.AssigneeIds ?? []).Select(id => id.Encrypt()).ToList(),
             DueDate = request.DueDate
         }), ct)).ToActionResult();
     }
@@ -71,7 +71,7 @@ public sealed class TasksController : ControllerBase
             Title = request.Title.Trim(),
             Description = request.Description,
             ColumnToken = request.ColumnId.Encrypt(),
-            AssigneeToken = request.AssigneeId is null ? null : request.AssigneeId.Value.Encrypt(),
+            AssigneeTokens = (request.AssigneeIds ?? []).Select(id => id.Encrypt()).ToList(),
             DueDate = request.DueDate
         }), ct)).ToActionResult();
     }

@@ -1,0 +1,78 @@
+@model Columnist.Web.Models.LogsViewModel
+@using Columnist.Auth.Authorization
+@inject Columnist.Auth.Security.Boards.IBoardAccessService BoardAccess
+@{
+    ViewData["Title"] = "Logs";
+    var logs = Model.BoardLogs;
+    ViewData["Crumb"] = logs.BoardName;
+    var url = Url.Action("Index", "Logs", new { area = "Tasks" });
+    var shown = (logs.Page - 1) * 20 + logs.Entries.Count;
+    var categories = new[] { ("", "All"), ("Task", "Tasks"), ("Board", "Board"), ("Access", "Access") };
+    var boardMenu = new Columnist.Web.Models.BoardUserMenuViewModel(
+        logs.BoardToken,
+        await BoardAccess.HasPermissionAsync(new BoardScope(BoardToken: logs.BoardToken), Permission.DeletedTasksRead),
+        await BoardAccess.HasPermissionAsync(new BoardScope(BoardToken: logs.BoardToken), Permission.LogsRead),
+        ViewData["IsTeamOwner"] is true);
+}
+
+@if (boardMenu.Any)
+{
+    @section UserMenu {
+        <partial name="_BoardUserMenu" model="boardMenu" />
+    }
+}
+
+<section class="kb-deleted">
+    @await Component.InvokeAsync("PageHeader", new
+    {
+        title = "Logs",
+        subtitle = $"{logs.BoardName} · everything that happened on this board.",
+        backUrl = Url.Action("Index", "Tasks", new { area = "Tasks", boardToken = logs.BoardToken }),
+        backLabel = "Back to board"
+    })
+
+    <form class="au-filters" method="get" action="@url"
+          hx-get="@url" hx-trigger="change, keyup changed delay:300ms from:[data-logs-search]"
+          hx-target="#kb-logs-list" hx-select="#kb-logs-list" hx-swap="outerHTML" hx-push-url="true">
+        <input type="hidden" name="board" value="@Model.Board" />
+        <input type="search" name="q" value="@logs.Search" class="kb-search-input au-search" placeholder="Search logs…" aria-label="Search logs" maxlength="100" autocomplete="off" data-logs-search />
+        <select name="actor" class="au-select" aria-label="Person">
+            <option value="">Everyone</option>
+            @foreach (var actor in logs.Actors)
+            {
+                <option value="@actor.Token" selected="@actor.Selected">@actor.Name</option>
+            }
+        </select>
+        <div class="au-chips" role="radiogroup" aria-label="Category">
+            @foreach (var (value, label) in categories)
+            {
+                <label class="au-chip">
+                    <input type="radio" name="category" value="@value" checked="@((logs.Category ?? "") == value)" />
+                    <span>@label</span>
+                </label>
+            }
+        </div>
+    </form>
+
+    <div id="kb-logs-list">
+        @if (logs.Entries.Count == 0)
+        {
+            <p class="kb-deleted-empty">No logs match these filters.</p>
+        }
+        else
+        {
+            <partial name="_AuditList" model="logs.Entries" view-data='new ViewDataDictionary(ViewData)
+            {
+                ["AuditShown"] = shown,
+                ["AuditTotal"] = logs.TotalCount,
+                ["AuditLastDay"] = logs.LastDay,
+                ["AuditNextUrl"] = shown < logs.TotalCount
+                    ? Url.Action("Index", "Logs", new { area = "Tasks", board = Model.Board, category = logs.Category, actor = logs.ActorToken, q = logs.Search, page = logs.Page + 1, after = logs.Entries[^1].CreatedAt.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) })
+                    : null,
+                ["AuditFirstUrl"] = logs.Page > 1
+                    ? Url.Action("Index", "Logs", new { area = "Tasks", board = Model.Board, category = logs.Category, actor = logs.ActorToken, q = logs.Search })
+                    : null
+            }' />
+        }
+    </div>
+</section>

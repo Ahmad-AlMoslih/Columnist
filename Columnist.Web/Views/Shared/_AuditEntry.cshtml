@@ -1,0 +1,179 @@
+@model Columnist.Contracts.Dtos.AuditEntryModel
+@{
+    var isTimeline = ViewData["AuditStyle"] as string == "timeline";
+    var target = Model.TargetName;
+    var isImages = Model.Action == "TaskEdited" && Model.Field == "Images";
+    var oldValue = Model.OldValue;
+    var newValue = Model.NewValue;
+    if (Model.Action == "TaskAssigned")
+    {
+        oldValue = string.IsNullOrEmpty(oldValue) ? "Unassigned" : oldValue;
+        newValue = string.IsNullOrEmpty(newValue) ? "Unassigned" : newValue;
+    }
+    var namesValue = Model.Action is "ColumnAdded" or "ColumnDeleted" or "PermissionGranted" or "PermissionRemoved" or "BoardDeleted" or "AccessRenewed" or "TaskCreated"
+        or "ChecklistAdded" or "ChecklistDeleted" or "ChecklistItemAdded" or "ChecklistItemDeleted" or "ChecklistItemChecked" or "ChecklistItemUnchecked";
+    var showChange = !namesValue && !isImages && oldValue is not null && newValue is not null;
+    var (pillText, pillClass) = Model.Action == "TaskDeleted" ? ("Deleted", "au-pill-deleted") : Model.Category switch
+    {
+        "Task" => ("Tasks", "au-pill-task"),
+        "Board" => ("Board", "au-pill-board"),
+        "Access" => ("Access", "au-pill-access"),
+        "Team" => ("Team", "au-pill-team"),
+        _ => (Model.Category, "au-pill-board")
+    };
+}
+
+@{
+    void RenderContent()
+    {
+<p class="au-text">
+    <strong>@Model.ActorName</strong>
+    @switch (Model.Action)
+    {
+        case "TaskCreated":
+            <text>created <strong>@target</strong></text>
+            if (Model.NewValue is not null)
+            {
+                <text>in @Model.NewValue</text>
+            }
+            break;
+        case "TaskEdited":
+            if (isImages)
+            {
+                <text>@(Model.NewValue == "Removed" ? "removed" : Model.NewValue?.ToLowerInvariant()) images on <strong>@target</strong></text>
+            }
+            else if (Model.Field is not null)
+            {
+                <text>edited the @Model.Field.ToLowerInvariant() of <strong>@target</strong></text>
+            }
+            else
+            {
+                <text>edited <strong>@target</strong></text>
+            }
+            break;
+        case "TaskMoved":
+            <text>moved <strong>@target</strong></text>
+            break;
+        case "TaskAssigned":
+            <text>changed the assignees of <strong>@target</strong></text>
+            break;
+        case "TaskDeleted":
+            <text>deleted <strong>@target</strong></text>
+            break;
+        case "TaskRestored":
+            <text>restored <strong>@target</strong></text>
+            break;
+        case "CommentAdded":
+            <text>commented on <strong>@target</strong></text>
+            break;
+        case "CommentEdited":
+            <text>edited a comment on <strong>@target</strong></text>
+            break;
+        case "ChecklistAdded":
+            <text>added the checklist <strong>@Model.NewValue</strong> to <strong>@target</strong></text>
+            break;
+        case "ChecklistRenamed":
+            <text>renamed a checklist on <strong>@target</strong></text>
+            break;
+        case "ChecklistDeleted":
+            <text>deleted the checklist <strong>@Model.OldValue</strong> (@Model.NewValue) from <strong>@target</strong></text>
+            break;
+        case "ChecklistItemAdded":
+            <text>added <strong>@Model.NewValue</strong> to <strong>@Model.Field</strong> on <strong>@target</strong></text>
+            break;
+        case "ChecklistItemEdited":
+            <text>edited an item in <strong>@Model.Field</strong> on <strong>@target</strong></text>
+            break;
+        case "ChecklistItemDeleted":
+            <text>deleted <strong>@Model.OldValue</strong> from <strong>@Model.Field</strong> on <strong>@target</strong></text>
+            break;
+        case "ChecklistItemChecked":
+            <text>checked <strong>@Model.NewValue</strong> in <strong>@Model.Field</strong> on <strong>@target</strong></text>
+            break;
+        case "ChecklistItemUnchecked":
+            <text>unchecked <strong>@Model.NewValue</strong> in <strong>@Model.Field</strong> on <strong>@target</strong></text>
+            break;
+        case "BoardCreated":
+            <text>created the board <strong>@target</strong></text>
+            break;
+        case "BoardRenamed":
+            <text>renamed the board</text>
+            break;
+        case "ColumnAdded":
+            <text>added the column @Model.NewValue</text>
+            break;
+        case "ColumnRenamed":
+            <text>renamed a column</text>
+            break;
+        case "ColumnDeleted":
+            <text>deleted the column @Model.OldValue</text>
+            break;
+        case "BoardDeleted":
+            <text>deleted the board <strong>@target</strong></text>
+            if (Model.NewValue is not null)
+            {
+                <text>with @Model.NewValue</text>
+            }
+            break;
+        case "MemberAdded":
+            <text>added <strong>@target</strong> to this board</text>
+            break;
+        case "MemberRemoved":
+            <text>removed <strong>@target</strong> from this board</text>
+            break;
+        case "PermissionGranted":
+            <text>gave @Model.NewValue to <strong>@target</strong></text>
+            break;
+        case "PermissionRemoved":
+            <text>removed @Model.NewValue from <strong>@target</strong></text>
+            break;
+        case "TeamCreated":
+            <text>created the team</text>
+            break;
+        case "TeamRenamed":
+            <text>renamed the team</text>
+            break;
+        case "TeamJoined":
+            <text>joined the team with an invite code</text>
+            break;
+        case "AccessRenewed":
+            <text>renewed access with an invite code</text>
+            if (Model.NewValue is not null)
+            {
+                <text>until @Model.NewValue</text>
+            }
+            break;
+        case "TeamMemberRemoved":
+            <text>removed <strong>@target</strong> from the team</text>
+            break;
+        default:
+            <text>@Model.Action <strong>@target</strong></text>
+            break;
+    }
+</p>
+        if (showChange)
+{
+    <div class="au-change">
+        <span class="au-old">@oldValue</span>
+        <span class="au-arrow" aria-hidden="true">→</span>
+        <span class="au-new">@newValue</span>
+    </div>
+}
+<span class="au-time">@Model.CreatedAt.ToString(isTimeline ? "dd MMM, HH:mm" : "HH:mm")@(Model.BoardName is not null ? $" · {Model.BoardName}" : null)</span>
+    }
+}
+
+@if (isTimeline)
+{
+    RenderContent();
+}
+else
+{
+    <div class="au-row">
+        <span class="ba-av au-av" aria-hidden="true">@if (Model.PhotoUrl is not null) { <img class="kb-photo" src="@Model.PhotoUrl" alt="" /> } else { @Model.ActorInitials }</span>
+        <div class="au-body">
+            @{ RenderContent(); }
+        </div>
+        <span class="au-pill @pillClass">@pillText</span>
+    </div>
+}

@@ -10,6 +10,8 @@
     <ProjectReference Include="..\Columnist.Auth\Columnist.Auth.csproj" />
     <ProjectReference Include="..\Columnist.Tasks\Columnist.Tasks.csproj" />
     <ProjectReference Include="..\Columnist.DataAccess\Columnist.DataAccess.csproj" />
+    <ProjectReference Include="..\Columnist.Users\Columnist.Users.csproj" />
+    <ProjectReference Include="..\Columnist.Teams\Columnist.Teams.csproj" />
   </ItemGroup>
 
   <ItemGroup>
