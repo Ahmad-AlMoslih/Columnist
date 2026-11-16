@@ -6,6 +6,7 @@ namespace Columnist.Tasks.Features.Checklists.Models;
 public sealed record ChecklistModel
 {
     public string Token { get; init; } = "";
+    public string Key { get; init; } = "";   // stable per checklist: remembers its open/closed state in the browser
     public string Title { get; init; } = "";
     public IReadOnlyList<ChecklistItemModel> Items { get; init; } = [];
     public int Done { get; init; }
@@ -30,6 +31,7 @@ public sealed record ChecklistModel
                 return new ChecklistModel
                 {
                     Token = g.Key.Encrypt(),
+                    Key = g.Key.ToStableKey("checklist"),
                     Title = g.First().Title,
                     Items = items,
                     Done = items.Count(i => i.IsDone),

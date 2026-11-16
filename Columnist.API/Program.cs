@@ -30,7 +30,7 @@ builder.Services.AddOpenApi();
 
 builder.Services
     .AddDataAccess(builder.Configuration.GetConnectionString("Columnist")!)
-    .AddServices(Path.Combine(builder.Environment.ContentRootPath, "wwwroot", "dms"), builder.Configuration["DataProtection:KeysPath"]!)
+    .AddServices(builder.Configuration, Path.Combine(builder.Environment.ContentRootPath, "wwwroot", "dms"), builder.Configuration["DataProtection:KeysPath"]!)
     .AddAuthenticationBehavior()
     .AddAuthorizationBehavior()
     .AddValidationBehavior()

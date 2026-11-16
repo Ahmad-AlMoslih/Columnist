@@ -2,6 +2,7 @@ using Columnist.Auth.Behaviors;
 using Columnist.Auth.Security.Boards;
 using Columnist.Auth.Security.CurrentUser;
 using Columnist.Auth.Security.Jwt;
+using Columnist.Auth.Security.PasswordResets;
 using Columnist.Auth.Security.Passwords;
 using Columnist.Auth.Security.Permissions;
 using Columnist.Auth.Security.Photos;
@@ -23,6 +24,7 @@ public static class DependencyInjection
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
         services.AddSingleton<IRefreshTokenService, RefreshTokenService>();
+        services.AddSingleton<IPasswordResetTokenService, PasswordResetTokenService>();
         services.AddScoped<IUserContext, UserContext>();
         services.AddScoped<IPermissionService, PermissionService>();
         services.AddScoped<IBoardAccessService, BoardAccessService>();

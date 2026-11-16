@@ -7,114 +7,129 @@
     var canWrite = await BoardAccess.HasPermissionAsync(new BoardScope(TaskToken: Model.TaskToken), Permission.TasksWrite);
 }
 
-@* Live refresh (live-board.js) morphs this region; every POST below returns it again (TasksController.Checklists). *@
-<div id="kb-task-checklists" class="kb-checklists" hx-ext="morph" data-task-checklists-url="@Url.Action("Checklists", new { token = Model.TaskToken })">
-    @foreach (var checklist in Model.Checklists)
+@* Live refresh (live-board.js) morphs this region; every POST below returns it again (TasksController.Checklists).
+   Rendered with the section and every checklist collapsed; checklists.js applies the state remembered for this task (data-cl-task, data-cl-key). *@
+<div id="kb-task-checklists" class="kb-checklists" hx-ext="morph" data-task-checklists-url="@Url.Action("Checklists", new { token = Model.TaskToken })" data-cl-task="@Model.TaskKey">
+    @if (Model.Checklists.Count > 0)
     {
-        var percent = checklist.Total == 0 ? 0 : (int)Math.Round(checklist.Done * 100.0 / checklist.Total);
-        <section class="kb-cl" aria-label="@checklist.Title">
-            <div class="kb-cl-head">
-                <svg class="kb-cl-icon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"></rect><path d="M8 12l3 3 5-6"></path></svg>
-                @if (canWrite)
-                {
-                    <div class="kb-cl-head-main" data-cl-inline>
-                        <button type="button" class="kb-cl-title kb-cl-title-btn" data-cl-open>@checklist.Title</button>
-                        <form class="kb-cl-form" asp-action="RenameChecklist" method="post" hidden data-cl-form
-                              hx-post="@Url.Action("RenameChecklist")" hx-target="#kb-task-checklists" hx-select="#kb-task-checklists" hx-select-oob="#kb-toasts" hx-swap="outerHTML">
+        <button type="button" class="kb-cl-section-toggle" aria-expanded="false" aria-controls="kb-cl-list" data-cl-section-toggle>
+            <span class="kb-view-label">Checklists · @Model.Checklists.Count · @Model.Checklists.Sum(c => c.Done)/@Model.Checklists.Sum(c => c.Total)</span>
+            <svg class="kb-cl-chev" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+        </button>
+        <div id="kb-cl-list" class="kb-cl-list" hidden data-cl-list>
+        @foreach (var checklist in Model.Checklists)
+        {
+            var percent = checklist.Total == 0 ? 0 : (int)Math.Round(checklist.Done * 100.0 / checklist.Total);
+            <section class="kb-cl" aria-label="@checklist.Title" data-cl-key="@checklist.Key" data-cl-force-open="@(checklist.IsAddingItem ? "true" : "false")">
+                <div class="kb-cl-head" data-cl-head>
+                    <button type="button" class="kb-cl-toggle" aria-expanded="false" aria-controls="kb-cl-body-@checklist.Key" aria-label="@checklist.Title" data-cl-toggle><svg class="kb-cl-chev" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></button>
+                    <svg class="kb-cl-icon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"></rect><path d="M8 12l3 3 5-6"></path></svg>
+                    @if (canWrite)
+                    {
+                        <div class="kb-cl-head-main" data-cl-inline>
+                            <button type="button" class="kb-cl-title kb-cl-title-btn" data-cl-open>@checklist.Title</button>
+                            <form class="kb-cl-form" asp-action="RenameChecklist" method="post" hidden data-cl-form
+                                  hx-post="@Url.Action("RenameChecklist")" hx-target="#kb-task-checklists" hx-select="#kb-task-checklists" hx-select-oob="#kb-toasts" hx-swap="outerHTML">
+                                <input type="hidden" name="taskToken" value="@Model.TaskToken" />
+                                <input type="hidden" name="checklistToken" value="@checklist.Token" />
+                                <input type="text" name="title" class="kb-cl-input" value="@checklist.Title" aria-label="Checklist title" required maxlength="@SaveChecklistCommand.TitleMaxLength" autocomplete="off" data-cl-input />
+                                <div class="kb-cl-form-actions">
+                                    <button type="submit" class="kb-btn-primary kb-cl-small">Save</button>
+                                    <button type="button" class="kb-btn-secondary kb-cl-small" data-cl-cancel>Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                        <span class="kb-cl-count">@checklist.Done/@checklist.Total</span>
+                        <form class="kb-cl-delete-form" asp-action="DeleteChecklist" method="post" hidden data-cl-collapsible
+                              data-confirm-title="Delete checklist?" data-confirm-yes="Delete"
+                              data-confirm-text="@($"\"{checklist.Title}\" and its {checklist.Total} item(s) are deleted.")"
+                              hx-post="@Url.Action("DeleteChecklist")" hx-target="#kb-task-checklists" hx-select="#kb-task-checklists" hx-select-oob="#kb-toasts" hx-swap="outerHTML">
                             <input type="hidden" name="taskToken" value="@Model.TaskToken" />
                             <input type="hidden" name="checklistToken" value="@checklist.Token" />
-                            <input type="text" name="title" class="kb-cl-input" value="@checklist.Title" aria-label="Checklist title" required maxlength="@SaveChecklistCommand.TitleMaxLength" autocomplete="off" data-cl-input />
+                            <button type="submit" class="kb-cl-btn">Delete</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <h3 class="kb-cl-title">@checklist.Title</h3>
+                        <span class="kb-cl-count">@checklist.Done/@checklist.Total</span>
+                    }
+                </div>
+
+                <div class="kb-cl-progress">
+                    <span class="kb-cl-percent">@percent%</span>
+                    <span class="kb-cl-bar" role="progressbar" aria-label="@checklist.Title progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@percent">
+                        <span class="kb-cl-bar-fill @(checklist.Total > 0 && checklist.Done == checklist.Total ? "kb-cl-bar-complete" : null)" style="width:@percent%"></span>
+                    </span>
+                </div>
+
+                <div id="kb-cl-body-@checklist.Key" class="kb-cl-body" hidden data-cl-collapsible>
+                @if (checklist.Items.Count > 0)
+                {
+                    <ul class="kb-cl-items">
+                        @foreach (var item in checklist.Items)
+                        {
+                            <li class="kb-cl-item @(item.IsDone ? "kb-cl-item-done" : null)">
+                                <form class="kb-cl-check" asp-action="SetItemDone" method="post"
+                                      hx-post="@Url.Action("SetItemDone")" hx-trigger="change" hx-target="#kb-task-checklists" hx-select="#kb-task-checklists" hx-select-oob="#kb-toasts" hx-swap="outerHTML">
+                                    <input type="hidden" name="taskToken" value="@Model.TaskToken" />
+                                    <input type="hidden" name="checklistToken" value="@checklist.Token" />
+                                    <input type="hidden" name="itemToken" value="@item.Token" />
+                                    <input type="checkbox" name="done" value="true" class="kb-cl-checkbox" checked="@item.IsDone" aria-label="@item.Text" />
+                                </form>
+                                @if (canWrite)
+                                {
+                                    <div class="kb-cl-item-main" data-cl-inline>
+                                        <button type="button" class="kb-cl-text kb-cl-text-btn" data-cl-open>@item.Text</button>
+                                        <form class="kb-cl-form" asp-action="EditItem" method="post" hidden data-cl-form
+                                              hx-post="@Url.Action("EditItem")" hx-target="#kb-task-checklists" hx-select="#kb-task-checklists" hx-select-oob="#kb-toasts" hx-swap="outerHTML">
+                                            <input type="hidden" name="taskToken" value="@Model.TaskToken" />
+                                            <input type="hidden" name="checklistToken" value="@checklist.Token" />
+                                            <input type="hidden" name="itemToken" value="@item.Token" />
+                                            <input type="text" name="text" class="kb-cl-input" value="@item.Text" aria-label="Item text" required maxlength="@SaveChecklistItemCommand.TextMaxLength" autocomplete="off" data-cl-input />
+                                            <div class="kb-cl-form-actions">
+                                                <button type="submit" class="kb-btn-primary kb-cl-small">Save</button>
+                                                <button type="button" class="kb-btn-secondary kb-cl-small" data-cl-cancel>Cancel</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                    <form class="kb-cl-item-delete-form" asp-action="DeleteItem" method="post"
+                                          hx-post="@Url.Action("DeleteItem")" hx-target="#kb-task-checklists" hx-select="#kb-task-checklists" hx-select-oob="#kb-toasts" hx-swap="outerHTML">
+                                        <input type="hidden" name="taskToken" value="@Model.TaskToken" />
+                                        <input type="hidden" name="checklistToken" value="@checklist.Token" />
+                                        <input type="hidden" name="itemToken" value="@item.Token" />
+                                        <button type="submit" class="kb-cl-item-delete" aria-label="Delete item">✕</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <span class="kb-cl-text">@item.Text</span>
+                                }
+                            </li>
+                        }
+                    </ul>
+                }
+
+                @if (canWrite)
+                {
+                    <div class="kb-cl-add" data-cl-inline>
+                        <button type="button" class="kb-cl-btn" hidden="@checklist.IsAddingItem" data-cl-open>Add an item</button>
+                        <form class="kb-cl-form" asp-action="AddItem" method="post" hidden="@(!checklist.IsAddingItem)" data-cl-form data-cl-autofocus="@checklist.IsAddingItem"
+                              hx-post="@Url.Action("AddItem")" hx-target="#kb-task-checklists" hx-select="#kb-task-checklists" hx-select-oob="#kb-toasts" hx-swap="outerHTML">
+                            <input type="hidden" name="taskToken" value="@Model.TaskToken" />
+                            <input type="hidden" name="checklistToken" value="@checklist.Token" />
+                            <input type="text" name="text" class="kb-cl-input" placeholder="Add an item" aria-label="New item" required maxlength="@SaveChecklistItemCommand.TextMaxLength" autocomplete="off" data-cl-input />
                             <div class="kb-cl-form-actions">
-                                <button type="submit" class="kb-btn-primary kb-cl-small">Save</button>
+                                <button type="submit" class="kb-btn-primary kb-cl-small">Add</button>
                                 <button type="button" class="kb-btn-secondary kb-cl-small" data-cl-cancel>Cancel</button>
                             </div>
                         </form>
                     </div>
-                    <form class="kb-cl-delete-form" asp-action="DeleteChecklist" method="post"
-                          data-confirm-title="Delete checklist?" data-confirm-yes="Delete"
-                          data-confirm-text="@($"\"{checklist.Title}\" and its {checklist.Total} item(s) are deleted.")"
-                          hx-post="@Url.Action("DeleteChecklist")" hx-target="#kb-task-checklists" hx-select="#kb-task-checklists" hx-select-oob="#kb-toasts" hx-swap="outerHTML">
-                        <input type="hidden" name="taskToken" value="@Model.TaskToken" />
-                        <input type="hidden" name="checklistToken" value="@checklist.Token" />
-                        <button type="submit" class="kb-cl-btn">Delete</button>
-                    </form>
                 }
-                else
-                {
-                    <h3 class="kb-cl-title">@checklist.Title</h3>
-                }
-            </div>
-
-            <div class="kb-cl-progress">
-                <span class="kb-cl-percent">@percent%</span>
-                <span class="kb-cl-bar" role="progressbar" aria-label="@checklist.Title progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@percent">
-                    <span class="kb-cl-bar-fill @(checklist.Total > 0 && checklist.Done == checklist.Total ? "kb-cl-bar-complete" : null)" style="width:@percent%"></span>
-                </span>
-            </div>
-
-            @if (checklist.Items.Count > 0)
-            {
-                <ul class="kb-cl-items">
-                    @foreach (var item in checklist.Items)
-                    {
-                        <li class="kb-cl-item @(item.IsDone ? "kb-cl-item-done" : null)">
-                            <form class="kb-cl-check" asp-action="SetItemDone" method="post"
-                                  hx-post="@Url.Action("SetItemDone")" hx-trigger="change" hx-target="#kb-task-checklists" hx-select="#kb-task-checklists" hx-select-oob="#kb-toasts" hx-swap="outerHTML">
-                                <input type="hidden" name="taskToken" value="@Model.TaskToken" />
-                                <input type="hidden" name="checklistToken" value="@checklist.Token" />
-                                <input type="hidden" name="itemToken" value="@item.Token" />
-                                <input type="checkbox" name="done" value="true" class="kb-cl-checkbox" checked="@item.IsDone" aria-label="@item.Text" />
-                            </form>
-                            @if (canWrite)
-                            {
-                                <div class="kb-cl-item-main" data-cl-inline>
-                                    <button type="button" class="kb-cl-text kb-cl-text-btn" data-cl-open>@item.Text</button>
-                                    <form class="kb-cl-form" asp-action="EditItem" method="post" hidden data-cl-form
-                                          hx-post="@Url.Action("EditItem")" hx-target="#kb-task-checklists" hx-select="#kb-task-checklists" hx-select-oob="#kb-toasts" hx-swap="outerHTML">
-                                        <input type="hidden" name="taskToken" value="@Model.TaskToken" />
-                                        <input type="hidden" name="checklistToken" value="@checklist.Token" />
-                                        <input type="hidden" name="itemToken" value="@item.Token" />
-                                        <input type="text" name="text" class="kb-cl-input" value="@item.Text" aria-label="Item text" required maxlength="@SaveChecklistItemCommand.TextMaxLength" autocomplete="off" data-cl-input />
-                                        <div class="kb-cl-form-actions">
-                                            <button type="submit" class="kb-btn-primary kb-cl-small">Save</button>
-                                            <button type="button" class="kb-btn-secondary kb-cl-small" data-cl-cancel>Cancel</button>
-                                        </div>
-                                    </form>
-                                </div>
-                                <form class="kb-cl-item-delete-form" asp-action="DeleteItem" method="post"
-                                      hx-post="@Url.Action("DeleteItem")" hx-target="#kb-task-checklists" hx-select="#kb-task-checklists" hx-select-oob="#kb-toasts" hx-swap="outerHTML">
-                                    <input type="hidden" name="taskToken" value="@Model.TaskToken" />
-                                    <input type="hidden" name="checklistToken" value="@checklist.Token" />
-                                    <input type="hidden" name="itemToken" value="@item.Token" />
-                                    <button type="submit" class="kb-cl-item-delete" aria-label="Delete item">✕</button>
-                                </form>
-                            }
-                            else
-                            {
-                                <span class="kb-cl-text">@item.Text</span>
-                            }
-                        </li>
-                    }
-                </ul>
-            }
-
-            @if (canWrite)
-            {
-                <div class="kb-cl-add" data-cl-inline>
-                    <button type="button" class="kb-cl-btn" hidden="@checklist.IsAddingItem" data-cl-open>Add an item</button>
-                    <form class="kb-cl-form" asp-action="AddItem" method="post" hidden="@(!checklist.IsAddingItem)" data-cl-form data-cl-autofocus="@checklist.IsAddingItem"
-                          hx-post="@Url.Action("AddItem")" hx-target="#kb-task-checklists" hx-select="#kb-task-checklists" hx-select-oob="#kb-toasts" hx-swap="outerHTML">
-                        <input type="hidden" name="taskToken" value="@Model.TaskToken" />
-                        <input type="hidden" name="checklistToken" value="@checklist.Token" />
-                        <input type="text" name="text" class="kb-cl-input" placeholder="Add an item" aria-label="New item" required maxlength="@SaveChecklistItemCommand.TextMaxLength" autocomplete="off" data-cl-input />
-                        <div class="kb-cl-form-actions">
-                            <button type="submit" class="kb-btn-primary kb-cl-small">Add</button>
-                            <button type="button" class="kb-btn-secondary kb-cl-small" data-cl-cancel>Cancel</button>
-                        </div>
-                    </form>
                 </div>
-            }
-        </section>
+            </section>
+        }
+        </div>
     }
 
     @if (canWrite)

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Columnist</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" />
+    <link rel="stylesheet" href="~/css/theme.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/login.css" asp-append-version="true" />
+</head>
+<body class="login-page">
+    <header class="login-header">
+        <div class="login-brand">
+            <img src="~/images/columnist-logo.png" alt="Columnist" class="login-brand-logo" />
+            <div class="login-brand-text">
+                <span class="login-brand-tagline">Organized chaos. One card at a time.</span>
+            </div>
+        </div>
+        <span class="login-chip">Board · Today</span>
+    </header>
+
+    <main class="login-main">
+        <div class="login-board">
+
+            <section class="login-column-side" aria-label="Backlog">
+                <div class="login-column-head">
+                    <span class="login-pill login-pill-backlog">Backlog</span>
+                    <span class="login-count">2</span>
+                </div>
+                <div class="login-ghost login-ghost-left">
+                    <span class="login-ghost-title">Remember my password</span>
+                    <div class="login-ghost-foot">
+                        <span class="login-ghost-avatar"></span>
+                        <span class="login-tag login-tag-someday">Someday</span>
+                    </div>
+                </div>
+                <div class="login-ghost login-ghost-right">
+                    <span class="login-ghost-title">Refill the coffee</span>
+                    <div class="login-ghost-foot">
+                        <span class="login-ghost-avatar"></span>
+                        <span class="login-tag login-tag-daily">Daily</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="login-column-main" aria-label="In Progress">
+                <div class="login-column-head">
+                    <span class="login-pill login-pill-progress">In Progress</span>
+                    <span class="login-count">1</span>
+                </div>
+
+                <div class="login-card">
+                    <div class="login-card-strip"></div>
+                    <div class="login-card-body">
+
+                        <div class="login-card-meta">
+                            <span class="login-card-id">COL-001</span>
+                            <span class="login-due">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+                                Due now
+                            </span>
+                        </div>
+
+                        @RenderBody()
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <footer class="login-footer">© @DateTime.UtcNow.Year Columnist</footer>
+</body>
+</html>

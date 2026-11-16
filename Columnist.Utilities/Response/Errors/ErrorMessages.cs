@@ -40,6 +40,7 @@ public static class ErrorMessages
     public const string UsernameRequired = "Please enter your username.";
     public const string PasswordRequired = "Please enter your password.";
     public const string InvalidCredentials = "Wrong username or password.";
+    public const string ResetLinkExpired = "This link has expired.";
 
     // Profile
     public const string FullNameRequired = "Please enter your full name.";

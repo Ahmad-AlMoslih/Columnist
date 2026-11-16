@@ -57,6 +57,7 @@ public sealed class GetTaskViewHandler : IRequestHandler<GetTaskViewQuery, ApiRe
         return ApiResponse<GetTaskViewModel>.Success(new GetTaskViewModel
         {
             Token = request.Token,
+            Key = taskId.Value.ToStableKey("task"),
             Title = task.Title,
             Description = task.Description,
             BoardName = task.BoardName,

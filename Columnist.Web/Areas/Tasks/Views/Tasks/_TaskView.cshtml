@@ -52,20 +52,6 @@
 
     <div class="kb-view-body">
         <div class="kb-view-main">
-            <section class="kb-view-section">
-                <span class="kb-view-label">Description</span>
-                @if (string.IsNullOrWhiteSpace(Model.Description))
-                {
-                    <p class="kb-view-empty">No description.</p>
-                }
-                else
-                {
-                    <p class="kb-view-desc">@Model.Description</p>
-                }
-            </section>
-
-            <partial name="_TaskChecklists" model="new Columnist.Tasks.Features.Checklists.Queries.GetTaskChecklists.GetTaskChecklistsModel { TaskToken = Model.Token, Checklists = Model.Checklists }" />
-
             @if (Model.ImageUrls.Count > 0)
             {
                 <section class="kb-view-section">
@@ -78,6 +64,20 @@
                     </div>
                 </section>
             }
+
+            <section class="kb-view-section">
+                <span class="kb-view-label">Description</span>
+                @if (string.IsNullOrWhiteSpace(Model.Description))
+                {
+                    <p class="kb-view-empty">No description.</p>
+                }
+                else
+                {
+                    <p class="kb-view-desc">@Model.Description</p>
+                }
+            </section>
+
+            <partial name="_TaskChecklists" model="new Columnist.Tasks.Features.Checklists.Queries.GetTaskChecklists.GetTaskChecklistsModel { TaskToken = Model.Token, TaskKey = Model.Key, Checklists = Model.Checklists }" />
 
             <div id="kb-comments" hx-get="@Url.Action("Comments", new { token = Model.Token })" hx-trigger="load" hx-swap="outerHTML">
                 <p class="kb-view-empty">Loading comments…</p>

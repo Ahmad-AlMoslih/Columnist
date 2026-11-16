@@ -39,6 +39,8 @@ html {
 /* Task popup: quick fade, and a loading state while its content is fetched. */
 #kb-task-modal.fade, .kb-task-modal-open .modal-backdrop.fade { transition-duration: 120ms; }
 #kb-task-modal.fade .modal-dialog { transition-duration: 120ms; }
+/* Task popup width (below 576px Bootstrap's full-width dialog applies). The New/Edit form keeps its own 620px rule below. */
+@media (min-width: 576px) { #kb-task-modal .modal-dialog { max-width: min(1100px, 95vw); } }
 @media (prefers-reduced-motion: reduce) {
     #kb-task-modal.fade, #kb-task-modal.fade .modal-dialog, .kb-task-modal-open .modal-backdrop.fade { transition: none; }
 }
@@ -119,15 +121,26 @@ html {
 .kb-view-audit strong { font-weight: 700; }
 .kb-view-audit span { color: var(--kb-text-muted); }
 /* Checklists in the task view */
-.kb-checklists { display: flex; flex-direction: column; gap: 22px; }
+.kb-checklists { display: flex; flex-direction: column; gap: 12px; }
+.kb-cl-section-toggle { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; margin: -4px -8px; padding: 4px 8px; border: 0; border-radius: 8px; background: none; color: var(--kb-text-muted); cursor: pointer; }
+.kb-cl-section-toggle:hover { background: var(--kb-subtle); color: var(--kb-text); }
+.kb-cl-section-toggle:focus-visible, .kb-cl-toggle:focus-visible { outline: 2px solid var(--kb-accent); outline-offset: 1px; }
+.kb-cl-chev { flex-shrink: 0; transform: rotate(-90deg); transition: transform .15s ease; }
+.kb-cl-section-toggle[aria-expanded="true"] .kb-cl-chev, .kb-cl-toggle[aria-expanded="true"] .kb-cl-chev { transform: none; }
+.kb-cl-list { display: flex; flex-direction: column; gap: 22px; }
+.kb-cl-list[hidden], .kb-cl-body[hidden] { display: none; }
 .kb-cl { display: flex; flex-direction: column; gap: 8px; }
-.kb-cl-head { display: flex; align-items: center; gap: 10px; }
+.kb-cl-head { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.kb-cl-toggle { flex-shrink: 0; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; margin-right: -4px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--kb-text-muted); cursor: pointer; }
+.kb-cl-toggle:hover { background: var(--kb-subtle-strong); color: var(--kb-text); }
+.kb-cl-count { margin-left: auto; flex-shrink: 0; font-size: 12px; font-weight: 600; color: var(--kb-text-muted); }
+.kb-cl-body { display: flex; flex-direction: column; gap: 8px; }
 .kb-cl-icon { flex-shrink: 0; color: var(--kb-text-secondary); }
 .kb-cl-head-main { flex: 1; min-width: 0; }
 .kb-cl-title { margin: 0; font-size: 15px; font-weight: 800; color: var(--kb-text); overflow-wrap: anywhere; }
 .kb-cl-title-btn { display: block; width: 100%; padding: 2px 0; border: 0; background: none; text-align: left; cursor: pointer; }
 .kb-cl-title-btn:hover { color: var(--kb-accent-hover); }
-.kb-cl-delete-form { margin: 0 0 0 auto; flex-shrink: 0; }
+.kb-cl-delete-form { margin: 0; flex-shrink: 0; }
 .kb-cl-btn { padding: 5px 12px; border: 0; border-radius: 8px; background: var(--kb-subtle); color: var(--kb-text-secondary); font-size: 13px; font-weight: 600; cursor: pointer; }
 .kb-cl-btn:hover { background: var(--kb-subtle-strong); color: var(--kb-text); }
 .kb-cl-btn[hidden] { display: none; }

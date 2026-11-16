@@ -26,7 +26,7 @@ builder.Services.AddControllersWithViews(options =>
 
 builder.Services
     .AddDataAccess(builder.Configuration.GetConnectionString("Columnist")!)
-    .AddServices(Path.Combine(builder.Environment.WebRootPath, "dms"), builder.Configuration["DataProtection:KeysPath"]!)
+    .AddServices(builder.Configuration, Path.Combine(builder.Environment.WebRootPath, "dms"), builder.Configuration["DataProtection:KeysPath"]!)
     .AddAuthorizationBehavior()
     .AddValidationBehavior()
     .AddAuthenticationBehavior()

@@ -30,6 +30,7 @@ public sealed class GetTaskChecklistsHandler : IRequestHandler<GetTaskChecklists
         return ApiResponse<GetTaskChecklistsModel>.Success(new GetTaskChecklistsModel
         {
             TaskToken = request.TaskToken,
+            TaskKey = taskId.Value.ToStableKey("task"),
             Checklists = ChecklistModel.FromRows(rows, addingId)
         });
     }

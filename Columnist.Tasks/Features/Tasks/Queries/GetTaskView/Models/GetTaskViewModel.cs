@@ -7,6 +7,7 @@ namespace Columnist.Tasks.Features.Tasks.Queries.GetTaskView.Models;
 public sealed record GetTaskViewModel
 {
     public string Token { get; init; } = "";
+    public string Key { get; init; } = "";   // stable per task (TokenExtensions.ToStableKey)
     public string Title { get; init; } = "";
     public string? Description { get; init; }
     public string BoardName { get; init; } = "";
