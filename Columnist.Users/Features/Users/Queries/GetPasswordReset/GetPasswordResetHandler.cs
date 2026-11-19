@@ -25,10 +25,10 @@ public sealed class GetPasswordResetHandler : IRequestHandler<GetPasswordResetQu
 
         var parameters = new DynamicParameters();
         parameters.Add("@TokenHash", _resetTokens.Hash(request.Token));
-        var username = await _db.QuerySingleOrDefaultAsync<string?>("dbo.GetPasswordResetToken", parameters, ct);
+        var email = await _db.QuerySingleOrDefaultAsync<string?>("dbo.GetPasswordResetToken", parameters, ct);
 
-        return username is null
+        return email is null
             ? ApiResponse<string>.NotFound(ErrorMessages.ResetLinkExpired)
-            : ApiResponse<string>.Success(username);
+            : ApiResponse<string>.Success(email);
     }
 }

@@ -1,6 +1,4 @@
 @model Columnist.Web.Models.LogsViewModel
-@using Columnist.Auth.Authorization
-@inject Columnist.Auth.Security.Boards.IBoardAccessService BoardAccess
 @{
     ViewData["Title"] = "Logs";
     var logs = Model.BoardLogs;
@@ -8,11 +6,7 @@
     var url = Url.Action("Index", "Logs", new { area = "Tasks" });
     var shown = (logs.Page - 1) * 20 + logs.Entries.Count;
     var categories = new[] { ("", "All"), ("Task", "Tasks"), ("Board", "Board"), ("Access", "Access") };
-    var boardMenu = new Columnist.Web.Models.BoardUserMenuViewModel(
-        logs.BoardToken,
-        await BoardAccess.HasPermissionAsync(new BoardScope(BoardToken: logs.BoardToken), Permission.DeletedTasksRead),
-        await BoardAccess.HasPermissionAsync(new BoardScope(BoardToken: logs.BoardToken), Permission.LogsRead),
-        ViewData["IsTeamOwner"] is true);
+    var boardMenu = new Columnist.Web.Models.BoardUserMenuViewModel(logs.BoardToken, logs.CanSeeDeleted, logs.CanSeeLogs, logs.CanManage);
 }
 
 @if (boardMenu.Any)
@@ -28,12 +22,15 @@
         title = "Logs",
         subtitle = $"{logs.BoardName} · everything that happened on this board.",
         backUrl = Url.Action("Index", "Tasks", new { area = "Tasks", boardToken = logs.BoardToken }),
-        backLabel = "Back to board"
+        backLabel = "Back to board",
+        backSkeleton = "board",
+        backSkeletonLabel = "Loading board"
     })
 
     <form class="au-filters" method="get" action="@url"
           hx-get="@url" hx-trigger="change, keyup changed delay:300ms from:[data-logs-search]"
-          hx-target="#kb-logs-list" hx-select="#kb-logs-list" hx-swap="outerHTML" hx-push-url="true">
+          hx-target="#kb-logs-list" hx-select="#kb-logs-list" hx-swap="outerHTML" hx-push-url="true"
+          data-skeleton="log-list" data-skeleton-label="Loading logs">
         <input type="hidden" name="board" value="@Model.Board" />
         <input type="search" name="q" value="@logs.Search" class="kb-search-input au-search" placeholder="Search logs…" aria-label="Search logs" maxlength="100" autocomplete="off" data-logs-search />
         <select name="actor" class="au-select" aria-label="Person">

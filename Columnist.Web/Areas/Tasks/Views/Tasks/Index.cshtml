@@ -1,18 +1,14 @@
 ﻿@model Columnist.Tasks.Features.Tasks.Queries.GetBoard.Models.GetBoardModel
-@using Columnist.Auth.Authorization
 @using System.Globalization
 @using Columnist.Tasks.Features.Tasks.Queries.GetBoard.Models
 @using Microsoft.AspNetCore.WebUtilities
-@inject Columnist.Auth.Security.Boards.IBoardAccessService BoardAccess
 @{
-    var canWrite = await BoardAccess.HasPermissionAsync(new BoardScope(BoardToken: Model.SelectedBoardToken), Permission.TasksWrite);
+    var canWrite = Model.CanWrite;
     ViewData["Crumb"] = Model.SelectedBoardName;
-    var canSeeDeleted = Model.SelectedBoardToken is not null && await BoardAccess.HasPermissionAsync(new BoardScope(BoardToken: Model.SelectedBoardToken), Permission.DeletedTasksRead);
-    var canSeeLogs = Model.SelectedBoardToken is not null && await BoardAccess.HasPermissionAsync(new BoardScope(BoardToken: Model.SelectedBoardToken), Permission.LogsRead);
-    var canManage = Model.SelectedBoardToken is not null && ViewData["IsTeamOwner"] is true;
-    var columnStatuses = ViewData["ColumnStatuses"] as IReadOnlyList<Columnist.Teams.Features.Boards.Queries.GetBoardSettings.Models.ColumnStatusModel>;
-    var boardMenu = Model.SelectedBoardToken is null ? null : new Columnist.Web.Models.BoardUserMenuViewModel(Model.SelectedBoardToken, canSeeDeleted, canSeeLogs, canManage);
-    var boardUrl = Url.Action("Index", "Tasks", new { area = "Tasks" })!;
+    var canManage = Model.CanManage;
+    var boardMenu = Model.SelectedBoardToken is null ? null : new Columnist.Web.Models.BoardUserMenuViewModel(Model.SelectedBoardToken, Model.CanSeeDeleted, Model.CanSeeLogs, canManage);
+    //^^ the stuff in the side panel
+    var boardUrl = Url.Action("Index", "Tasks", new { area = "Tasks" })!;//checks which boards you have access too
 
     // The "Due" chip: "This week", "3 Nov – 10 Nov", "from 3 Nov", "until 10 Nov".
     var filter = Model.Filter;
@@ -30,8 +26,9 @@
 @section TopBar {
     @if (canWrite && Model.SelectedBoardToken is not null)
     {
-        <a class="kb-btn-primary" asp-area="Tasks" asp-controller="Tasks" asp-action="Save" asp-route-boardToken="@Model.SelectedBoardToken"
-           hx-get="@Url.Action("Save", "Tasks", new { area = "Tasks", boardToken = Model.SelectedBoardToken })" hx-target="#kb-task-modal-body" hx-swap="innerHTML">
+        <a class="kb-btn-primary" asp-area="Tasks" asp-controller="Tasks" asp-action="New" asp-route-boardToken="@Model.SelectedBoardToken"
+           hx-get="@Url.Action("New", "Tasks", new { area = "Tasks", boardToken = Model.SelectedBoardToken })" hx-target="#kb-task-modal-body" hx-swap="innerHTML"
+           data-skeleton="task-view" data-skeleton-label="Loading task">
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
             New task
         </a>
@@ -45,6 +42,31 @@
     }
 }
 
+@* Board · Dashboard · Report (page-tabs.js): outside #kb-tab-page, so switching leaves it in place (a tab gets
+   only #kb-tab-page, _TabLayout). *@
+@if (!Context.Request.IsTabSwap())
+{
+    <div id="kb-page-tabs" class="kb-page-tabs" hidden="@(!(Model.SelectedBoardToken is not null && (Model.CanSeeReports || canManage)))">
+        @if ((Model.SelectedBoardToken is not null && (Model.CanSeeReports || canManage)))
+        {
+            <partial name="_BoardPageTabs" model='new Columnist.Web.Models.BoardPageTabsViewModel(Model.SelectedBoardToken!, Columnist.Web.Models.BoardPageTabsViewModel.Board)' />
+        }
+    </div>
+}
+
+@if (Model.Boards.Count == 0)
+{
+    <div id="kb-tab-page" data-page="board">
+        <partial name="_TaskToasts" />
+        <div class="kb-empty-state">
+            <h2>No boards yet</h2>
+            <p class="mb-0">Once a board is created, its columns and tasks will show up here.</p>
+        </div>
+    </div>
+    return;
+}
+
+<div id="kb-tab-page" data-page="board">
 <div id="kb-toasts">
     @if (TempData["Message"] is not null || TempData["Error"] is not null)
     {
@@ -67,15 +89,6 @@
     }
 </div>
 
-@if (Model.Boards.Count == 0)
-{
-    <div class="kb-empty-state">
-        <h2>No boards yet</h2>
-        <p class="mb-0">Once a board is created, its columns and tasks will show up here.</p>
-    </div>
-    return;
-}
-
 <div id="kb-board-region" hx-ext="morph" data-board-token="@Model.SelectedBoardToken">
     <div class="kb-page-header">
         <div>
@@ -97,7 +110,8 @@
                 var active = tab.Selected;
                 <a class="kb-tab @(active ? "active" : null)" aria-current="@(active ? "page" : null)"
                    asp-action="Index" asp-route-boardToken="@tab.Token"
-                   hx-get="@Url.Action("Index", new { boardToken = tab.Token })" hx-target="#kb-board-region" hx-select="#kb-board-region" hx-select-oob="#kb-toasts" hx-swap="outerHTML" hx-push-url="true">@tab.Name</a>
+                   hx-get="@Url.Action("Index", new { boardToken = tab.Token })" hx-target="#kb-board-region" hx-select="#kb-board-region" hx-select-oob="#kb-toasts,#kb-page-tabs" hx-swap="outerHTML" hx-push-url="true"
+                   data-skeleton="board" data-skeleton-label="Loading board">@tab.Name</a>
             }
         </nav>
     </div>
@@ -165,7 +179,7 @@
                     <span class="kb-column-count">@(Model.IsFiltered ? $"{column.Tasks.Count} of {column.TotalTaskCount}" : column.Tasks.Count.ToString())</span>
                 </div>
 
-                <div class="kb-column-body" data-column-token="@column.ColumnToken" data-can-move="@(canWrite && !Model.IsFiltered ? "true" : "false")">
+                <div class="kb-column-body" data-column-token="@column.ColumnToken" data-column-done="@(column.IsDone ? "true" : null)" data-can-move="@(canWrite && !Model.IsFiltered ? "true" : "false")">
                     @foreach (var task in column.Tasks)
                     {
                         <partial name="_TaskCard" model="task" view-data='new ViewDataDictionary(ViewData) { ["BoardToken"] = Model.SelectedBoardToken }' />
@@ -179,8 +193,9 @@
 
                 @if (canWrite)
                 {
-                    <a class="kb-add-task" asp-action="Save" asp-route-columnToken="@column.ColumnToken" asp-route-boardToken="@Model.SelectedBoardToken"
-                       hx-get="@Url.Action("Save", new { columnToken = column.ColumnToken, boardToken = Model.SelectedBoardToken })" hx-target="#kb-task-modal-body" hx-swap="innerHTML">
+                    <a class="kb-add-task" asp-action="New" asp-route-columnToken="@column.ColumnToken" asp-route-boardToken="@Model.SelectedBoardToken"
+                       hx-get="@Url.Action("New", new { columnToken = column.ColumnToken, boardToken = Model.SelectedBoardToken })" hx-target="#kb-task-modal-body" hx-swap="innerHTML"
+                       data-skeleton="task-view" data-skeleton-label="Loading task">
                         <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round">
                             <path d="M12 5v14M5 12h14" />
                         </svg>
@@ -199,24 +214,16 @@
         }
     </div>
 
-    <form id="kb-move-form" asp-action="Move" method="post" hidden
-          hx-post="@Url.Action("Move")" hx-target="#kb-board-region" hx-select="#kb-board-region" hx-select-oob="#kb-toasts" hx-swap="outerHTML">
-        <input type="hidden" name="token" />
-        <input type="hidden" name="columnToken" />
-        <input type="hidden" name="position" />
-        <input type="hidden" name="boardToken" value="@Model.SelectedBoardToken" />
-    </form>
+    @* The drag-and-drop move (board-dnd.js): the task, column and position are sent as values; the moves go one at a time, in order.
+       data-card-url = the card re-render after a drag into or out of a Done column. *@
+    <form id="kb-move-form" asp-action="Move" method="post" hidden hx-sync="this:queue all"
+          data-card-url="@Url.Action("Card", new { boardToken = Model.SelectedBoardToken })"></form>
 </div>
 
-<div class="modal fade" id="kb-task-modal" tabindex="-1" aria-labelledby="kb-task-modal-title" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content kb-modal">
-            <div class="kb-modal-body" id="kb-task-modal-body"></div>
-        </div>
-    </div>
-</div>
+<partial name="_TaskModals" />
 
-@if (canManage && columnStatuses is not null)
+@* The statuses load when the popup first opens (add-column.js, data-statuses-url). *@
+@if (canManage)
 {
     <div class="modal fade" id="kb-add-column-modal" tabindex="-1" aria-labelledby="kb-add-column-title" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -233,13 +240,9 @@
                     <div class="mb-3">
                         <label class="form-label" for="kb-add-column-status">Status</label>
                         <div class="kb-add-column-status">
-                            <span class="bs-dot" data-column-dot style="background:@columnStatuses.FirstOrDefault()?.Color"></span>
-                            <select id="kb-add-column-status" name="statusName" class="form-select" data-add-column-status>
-                                @foreach (var status in columnStatuses)
-                                {
-                                    <option value="@status.Name" data-color="@status.Color">@status.Name</option>
-                                }
-                            </select>
+                            <span class="bs-dot" data-column-dot></span>
+                            <select id="kb-add-column-status" name="statusName" class="form-select" data-add-column-status
+                                    data-statuses-url="@Url.Action("ColumnStatuses", "Boards", new { area = "Teams" })"></select>
                         </div>
                     </div>
                     <div class="text-danger kb-add-column-error" role="alert"><span id="kb-add-column-error"></span></div>
@@ -252,3 +255,4 @@
         </div>
     </div>
 }
+</div>

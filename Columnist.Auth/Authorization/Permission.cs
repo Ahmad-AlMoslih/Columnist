@@ -7,5 +7,6 @@ public enum Permission
     TasksDelete,
     DeletedTasksRead,
     DeletedTasksWrite,
-    LogsRead
+    LogsRead,
+    ReportsRead
 }

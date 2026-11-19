@@ -1,4 +1,5 @@
 using Columnist.Auth.Authorization;
+using Columnist.Auth.Security.Boards;
 using Columnist.Auth.Security.CurrentUser;
 using Columnist.Auth.Security.Photos;
 using Columnist.Contracts.Dtos;
@@ -19,9 +20,11 @@ public sealed class GetBoardLogsHandler : IRequestHandler<GetBoardLogsQuery, Api
     private readonly IDbExecutor _db;
     private readonly IUserContext _userContext;
     private readonly IUserPhotoService _photos;
+    private readonly IBoardAccessService _boards;
 
-    public GetBoardLogsHandler(IDbExecutor db, IUserContext userContext, IUserPhotoService photos)
+    public GetBoardLogsHandler(IDbExecutor db, IUserContext userContext, IUserPhotoService photos, IBoardAccessService boards)
     {
+        _boards = boards;
         _db = db;
         _userContext = userContext;
         _photos = photos;
@@ -79,6 +82,9 @@ public sealed class GetBoardLogsHandler : IRequestHandler<GetBoardLogsQuery, Api
 
         return ApiResponse<GetBoardLogsModel>.Success(new GetBoardLogsModel
         {
+            CanSeeDeleted = await _boards.HasPermissionAsync(boardId.Value, Permission.DeletedTasksRead, cancellationToken),
+            CanSeeLogs = await _boards.HasPermissionAsync(boardId.Value, Permission.LogsRead, cancellationToken),
+            CanManage = await _boards.IsOwnerAsync(boardId.Value, cancellationToken),
             BoardToken = request.BoardToken,
             BoardName = boardName,
             Entries = entries,

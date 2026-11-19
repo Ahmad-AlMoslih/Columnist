@@ -36,10 +36,10 @@ public sealed class ChangePasswordHandler : IRequestHandler<ChangePasswordComman
         if (profile is null)
             return ApiResponse<LoginResultDto>.NotFound();
 
-        // Check the current password against the same row login uses (dbo.GetUserByUsername).
+        // Check the current password against the same row login uses (dbo.GetUserByEmail).
         var credentialsParameters = new DynamicParameters();
-        credentialsParameters.Add("@Username", profile.Username);
-        var credentials = await _db.QuerySingleOrDefaultAsync<UserCredentialsDto>("dbo.GetUserByUsername", credentialsParameters, ct);
+        credentialsParameters.Add("@Email", profile.Email);
+        var credentials = await _db.QuerySingleOrDefaultAsync<UserCredentialsDto>("dbo.GetUserByEmail", credentialsParameters, ct);
         if (credentials is null || credentials.Id != userId || !_passwordHasher.Verify(request.CurrentPassword, credentials.PasswordHash))
             return ApiResponse<LoginResultDto>.BadRequest(ErrorMessages.CurrentPasswordWrong, nameof(ChangePasswordCommand.CurrentPassword));
 

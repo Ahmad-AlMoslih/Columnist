@@ -8,4 +8,8 @@ public sealed record GetBoardSettingsModel
     public bool IsNew { get; init; }
     public IReadOnlyList<BoardColumnSettingsModel> Columns { get; init; } = [];
     public IReadOnlyList<ColumnStatusModel> Statuses { get; init; } = [];
+    // The board menu's links (existing board only).
+    public bool CanSeeDeleted { get; init; }
+    public bool CanSeeLogs { get; init; }
+    public bool CanManage { get; init; }
 }

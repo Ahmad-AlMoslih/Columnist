@@ -1,4 +1,5 @@
 using Columnist.Auth.Authorization;
+using Columnist.Auth.Security.Boards;
 using Columnist.Auth.Security.CurrentUser;
 using Columnist.Auth.Security.Photos;
 using Columnist.Contracts.Dtos;
@@ -18,12 +19,14 @@ public sealed class GetBoardAccessHandler : IRequestHandler<GetBoardAccessQuery,
     private readonly IDbExecutor _db;
     private readonly IUserContext _userContext;
     private readonly IUserPhotoService _photos;
+    private readonly IBoardAccessService _boards;
 
-    public GetBoardAccessHandler(IDbExecutor db, IUserContext userContext, IUserPhotoService photos)
+    public GetBoardAccessHandler(IDbExecutor db, IUserContext userContext, IUserPhotoService photos, IBoardAccessService boards)
     {
         _db = db;
         _userContext = userContext;
         _photos = photos;
+        _boards = boards;
     }
 
     public async Task<ApiResponse<GetBoardAccessModel>> Handle(GetBoardAccessQuery request, CancellationToken cancellationToken)
@@ -126,7 +129,13 @@ public sealed class GetBoardAccessHandler : IRequestHandler<GetBoardAccessQuery,
             Search = request.Search,
             Members = members,
             Candidates = candidates,
-            Permissions = permissions
+            Permissions = permissions,
+            OwnerName = _userContext.FullName ?? "",
+            OwnerInitials = GetInitials(_userContext.FullName ?? ""),
+            OwnerPhotoUrl = photos.GetValueOrDefault(_userContext.UserId ?? 0),
+            CanSeeDeleted = await _boards.HasPermissionAsync(boardId.Value, Permission.DeletedTasksRead, cancellationToken),
+            CanSeeLogs = await _boards.HasPermissionAsync(boardId.Value, Permission.LogsRead, cancellationToken),
+            CanManage = await _boards.IsOwnerAsync(boardId.Value, cancellationToken)
         });
     }
 

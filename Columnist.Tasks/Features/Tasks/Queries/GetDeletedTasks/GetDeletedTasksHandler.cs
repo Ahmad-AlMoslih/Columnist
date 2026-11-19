@@ -1,3 +1,5 @@
+using Columnist.Auth.Authorization;
+using Columnist.Auth.Security.Boards;
 using Columnist.Contracts.Dtos;
 using Columnist.DataAccess;
 using Columnist.Services.Dms;
@@ -15,11 +17,13 @@ public sealed class GetDeletedTasksHandler : IRequestHandler<GetDeletedTasksQuer
 {
     private readonly IDbExecutor _db;
     private readonly IDmsService _dms;
+    private readonly IBoardAccessService _boards;
 
-    public GetDeletedTasksHandler(IDbExecutor db, IDmsService dms)
+    public GetDeletedTasksHandler(IDbExecutor db, IDmsService dms, IBoardAccessService boards)
     {
         _db = db;
         _dms = dms;
+        _boards = boards;
     }
 
     public async Task<ApiResponse<GetDeletedTasksModel>> Handle(GetDeletedTasksQuery request, CancellationToken cancellationToken)
@@ -42,6 +46,7 @@ public sealed class GetDeletedTasksHandler : IRequestHandler<GetDeletedTasksQuer
             .Select(t => new DeletedTaskModel
             {
                 Token = t.Id.Encrypt(),
+                Key = t.Id.ToStableKey("task"),
                 Title = t.Title,
                 BoardName = t.BoardName,
                 ColumnName = t.ColumnName,
@@ -51,6 +56,15 @@ public sealed class GetDeletedTasksHandler : IRequestHandler<GetDeletedTasksQuer
             })
             .ToList();
 
-        return ApiResponse<GetDeletedTasksModel>.Success(new GetDeletedTasksModel { Tasks = tasks, Search = request.Search, BoardToken = request.BoardToken });
+        return ApiResponse<GetDeletedTasksModel>.Success(new GetDeletedTasksModel
+        {
+            Tasks = tasks,
+            Search = request.Search,
+            BoardToken = request.BoardToken,
+            CanSeeDeleted = await _boards.HasPermissionAsync(boardId.Value, Permission.DeletedTasksRead, cancellationToken),
+            CanSeeLogs = await _boards.HasPermissionAsync(boardId.Value, Permission.LogsRead, cancellationToken),
+            CanManage = await _boards.IsOwnerAsync(boardId.Value, cancellationToken),
+            CanRestore = await _boards.HasPermissionAsync(boardId.Value, Permission.DeletedTasksWrite, cancellationToken)
+        });
     }
 }

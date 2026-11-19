@@ -1,6 +1,7 @@
 using Columnist.Teams.Features.BoardAccess.Commands.AddBoardMember;
 using Columnist.Teams.Features.BoardAccess.Commands.RemoveBoardMember;
 using Columnist.Teams.Features.BoardAccess.Commands.SetBoardMemberPermission;
+using Columnist.Teams.Features.BoardAccess.Queries.GetBoardAccess;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -28,7 +29,7 @@ public class BoardAccessController : Controller
         else
             TempData["Error"] = response.Errors[0].Message;
 
-        return RedirectToAction("Manage", "Boards", new { token = boardToken, section = "access", search });
+        return await AccessAsync(boardToken, search, ct);
     }
 
     [HttpPost]
@@ -41,7 +42,7 @@ public class BoardAccessController : Controller
         else
             TempData["Error"] = response.Errors[0].Message;
 
-        return RedirectToAction("Manage", "Boards", new { token = boardToken, section = "access", search });
+        return await AccessAsync(boardToken, search, ct);
     }
 
     [HttpPost]
@@ -54,6 +55,17 @@ public class BoardAccessController : Controller
         else
             TempData["Error"] = response.Errors[0].Message;
 
-        return RedirectToAction("Manage", "Boards", new { token = boardToken, section = "access", search });
+        return await AccessAsync(boardToken, search, ct);
+    }
+
+    // The Manage page's access region (#ba-results) with the toasts (#kb-toasts, for hx-select-oob), read after the change.
+    private async Task<IActionResult> AccessAsync(string boardToken, string? search, CancellationToken ct)
+    {
+        var access = await _mediator.Send(new GetBoardAccessQuery(boardToken, search), ct);
+        if (!access.IsSuccess)
+            return StatusCode(access.StatusCode);
+
+        ViewData["AccessToasts"] = true;
+        return PartialView("_Access", access.Data);
     }
 }

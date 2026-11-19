@@ -10,6 +10,7 @@
 .lp-top { max-width: 1200px; margin: 0 auto; padding: 22px 28px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .lp-brand { display: flex; align-items: center; gap: 10px; color: var(--kb-accent); }
 .lp-brand span { font-size: 20px; font-weight: 800; letter-spacing: -0.01em; color: var(--kb-text); }
+.brand-logo-picture { display: contents; }
 .lp-brand-logo { height: 44px; width: auto; display: block; mix-blend-mode: multiply; }
 .lp-nav { display: flex; align-items: center; gap: 8px; }
 .lp-nav-link { padding: 10px 14px; border-radius: 10px; color: var(--kb-text-secondary); font-size: 14px; font-weight: 600; }

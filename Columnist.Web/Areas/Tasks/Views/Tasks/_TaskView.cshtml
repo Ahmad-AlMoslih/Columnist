@@ -1,33 +1,127 @@
 @model Columnist.Tasks.Features.Tasks.Queries.GetTaskView.Models.GetTaskViewModel
-@using Columnist.Auth.Authorization
-@using Columnist.Web.Application.Extensions
-@inject Columnist.Auth.Security.Boards.IBoardAccessService BoardAccess
+@using Columnist.Contracts.Dtos
 @{
-    var canWrite = await BoardAccess.HasPermissionAsync(new BoardScope(TaskToken: Model.Token), Permission.TasksWrite);
-    var canDelete = await BoardAccess.HasPermissionAsync(new BoardScope(TaskToken: Model.Token), Permission.TasksDelete);
-    var inModal = Context.Request.IsHtmx();
-    var boardToken = ViewData["BoardToken"] as string;
-    var isDone = Model.StatusName.Equals("Done", StringComparison.OrdinalIgnoreCase);
+    var canWrite = Model.CanWrite;
+    var isDraft = Model.IsDraft;
+    var canDelete = Model.CanDelete && !isDraft;
+    var boardToken = ViewData["BoardToken"] as string; // board path
+    var isDone = Model.StatusName.Equals("Done", StringComparison.OrdinalIgnoreCase);// status
+
+    // The field rendered open: the draft's title, or a save that failed validation (EditValue = what was typed).
+    var editField = ViewData["EditField"] as string;
+    var editValue = ViewData["EditValue"] as string;
+    bool Open(string field) => canWrite && string.Equals(editField, field, StringComparison.OrdinalIgnoreCase);
+    string? Skip(string field) => Open(field) ? "" : null;   // an open editor is left alone by every morph (task-inline.js)
+
+    var titleValue = Open("title") && editValue is not null ? editValue : Model.Title;
+    var descriptionValue = Open("description") ? editValue : Model.Description;
+    var dueValue = Open("dueDate") ? editValue : Model.DueDate?.ToString("yyyy-MM-dd");
+    // The image picker's client checks (the server checks again): DmsOptions, via the model.
+    var imageTypes = string.Join(",", Model.UploadAllowedTypes);
+    // The round remove buttons' ×: a fixed-size icon, centred by the button (.kb-ti-x).
+    var xIcon = new Microsoft.AspNetCore.Html.HtmlString("<svg aria-hidden=\"true\" width=\"10\" height=\"10\" viewBox=\"0 0 10 10\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\"><path d=\"M1.5 1.5l7 7M8.5 1.5l-7 7\"></path></svg>");
+    var assignedKeys = Model.Assignees.Select(a => a.Key).ToHashSet();
 }
 
-<div class="kb-view">
+<div id="kb-task-view" class="kb-view@(isDraft ? " kb-ti-draft" : "")" hx-ext="morph"
+     data-task-view-url="@(isDraft ? null : Url.Action("Details", new { token = Model.Token, boardToken }))">
+    @if (canWrite && !isDraft)
+    {
+        <div id="kb-ti-keys" hidden>
+            <input type="hidden" name="token" value="@Model.Token" />
+            <input type="hidden" name="rowVersion" value="@Model.RowVersion" />
+            <input type="hidden" name="boardToken" value="@boardToken" />
+        </div>
+    }
     <header class="kb-view-head">
         <div class="kb-view-head-text">
             <div class="kb-view-meta">
-                <span class="kb-status-pill" style="background:@Model.StatusColor">@Model.ColumnName</span>
-                <span class="kb-view-where">@Model.BoardName › @Model.ColumnName</span>
+                @if (canWrite)
+                {
+                    <div class="dropdown kb-ti-column" data-ti-field="column">
+                        <form asp-action="MoveToColumn" method="post" class="kb-ti-column-form" data-board-refresh
+                              hx-post="@(isDraft ? null : Url.Action("MoveToColumn"))" hx-include="#kb-ti-keys"
+                              hx-target="#kb-task-view" hx-select="#kb-task-view" hx-select-oob="#kb-toasts" hx-swap="morph:outerHTML">
+                            <button type="button" class="kb-status-pill kb-ti-pill" style="background:@Model.StatusColor" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Column: @Model.StatusName · @Model.ColumnName. Change column" data-ti-pill>
+                                <span data-ti-pill-text>@Model.StatusName · @Model.ColumnName</span>
+                                <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+                            </button>
+                            <ul class="dropdown-menu kb-ti-column-menu">
+                                @foreach (var column in Model.Columns)
+                                {
+                                    <li>
+                                        <button type="@(isDraft || column.Selected ? "button" : "submit")" class="dropdown-item kb-ti-column-option" name="columnToken" value="@column.Token"
+                                                aria-current="@(column.Selected ? "true" : null)"
+                                                data-ti-column data-name="@column.Name" data-status="@column.StatusName" data-color="@column.StatusColor">
+                                            <span class="kb-ti-dot" style="background:@column.StatusColor" aria-hidden="true"></span>
+                                            <span class="kb-ti-column-name">@column.Name</span>
+                                            <span class="kb-ti-column-status">@column.StatusName</span>
+                                        </button>
+                                    </li>
+                                }
+                            </ul>
+                        </form>
+                    </div>
+                }
+                else
+                {
+                    <span class="kb-status-pill" style="background:@Model.StatusColor">@Model.ColumnName</span>
+                }
+                <span class="kb-view-where" data-ti-where>@Model.BoardName › @Model.ColumnName</span>
             </div>
-            <h2 class="kb-view-title" id="kb-task-modal-title">@Model.Title</h2>
+
+            @if (canWrite)
+            {
+                <div class="kb-ti-title" data-ti-field="title" data-morph-skip="@Skip("title")">
+                    <h2 class="kb-view-title" id="kb-task-modal-title" hidden="@Open("title")" data-ti-display>
+                        <button type="button" class="kb-ti-editable kb-ti-title-btn" data-ti-open>
+                            @Model.Title
+                            <svg class="kb-ti-pencil" aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg>
+                        </button>
+                    </h2>
+                    <form asp-action="@(isDraft ? "Create" : "UpdateTitle")" method="post" class="kb-ti-editor" hidden="@(!Open("title"))"
+                          hx-post="@Url.Action(isDraft ? "Create" : "UpdateTitle")" hx-include="@(isDraft ? null : "#kb-ti-keys")"
+                          hx-target="#kb-task-view" hx-select="#kb-task-view" hx-select-oob="#kb-toasts" hx-swap="morph:outerHTML"
+                          data-ti-editor data-ti-draft="@(isDraft ? "true" : null)" data-board-refresh="@(isDraft ? "true" : null)">
+                        @if (isDraft)
+                        {
+                            <input type="hidden" name="columnToken" value="@Model.ColumnToken" data-ti-draft-column />
+                            <input type="hidden" name="boardToken" value="@boardToken" />
+                        }
+                        <input type="text" name="title" class="kb-ti-input kb-ti-title-input" value="@titleValue" aria-label="Task title"
+                               placeholder="@(isDraft ? "Task title" : null)" autocomplete="off" maxlength="@TaskFormDto.TitleMaxLength"
+                               data-val="true" data-val-required="@ErrorMessages.TitleRequired"
+                               data-val-length="@string.Format(ErrorMessages.TitleTooLong, nameof(TaskFormDto.Title), TaskFormDto.TitleMaxLength)" data-val-length-max="@TaskFormDto.TitleMaxLength"
+                               data-ti-input />
+                        @Html.ValidationMessage("title", new { @class = "text-danger kb-ti-error" })
+                        <div class="kb-ti-actions">
+                            @if (isDraft)
+                            {
+                                <button type="submit" class="kb-btn-primary kb-ti-small" disabled="@string.IsNullOrWhiteSpace(titleValue)" data-ti-create>Create task</button>
+                                <button type="button" class="kb-btn-secondary kb-ti-small" data-bs-dismiss="modal">Cancel</button>
+                            }
+                            else
+                            {
+                                <button type="submit" class="kb-btn-primary kb-ti-small">Save</button>
+                                <button type="button" class="kb-btn-secondary kb-ti-small" data-ti-cancel>Cancel</button>
+                            }
+                        </div>
+                    </form>
+                </div>
+                @if (isDraft)
+                {
+                    <p class="kb-ti-draft-note">Give it a title to create the task, then add the rest.</p>
+                }
+            }
+            else
+            {
+                <h2 class="kb-view-title" id="kb-task-modal-title">@Model.Title</h2>
+            }
         </div>
         @if (canWrite)
         {
             <div class="kb-view-actions">
-                <a class="kb-btn-secondary kb-view-edit" asp-action="Save" asp-route-token="@Model.Token" asp-route-boardToken="@boardToken"
-                   hx-get="@Url.Action("Save", new { token = Model.Token, boardToken })" hx-target="#kb-task-modal-body" hx-swap="innerHTML">
-                    <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg>
-                    Edit
-                </a>
-                <button type="button" class="kb-btn-secondary kb-view-edit" data-cl-new-open>
+                <button type="button" class="kb-btn-secondary kb-view-edit" disabled="@isDraft" data-cl-new-open>
                     <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"></rect><path d="M8 12l3 3 5-6"></path></svg>
                     Add checklist
                 </button>
@@ -38,36 +132,96 @@
             <form asp-action="Delete" method="post" class="kb-view-delete-form"
                   data-confirm-title="Delete task?" data-confirm-yes="Delete"
                   data-confirm-text="@($"\"{Model.Title}\" moves to Deleted tasks. It can be restored.")"
-                  hx-post="@(inModal ? Url.Action("Delete") : null)" hx-target="#kb-board-region" hx-select="#kb-board-region" hx-select-oob="#kb-toasts" hx-swap="outerHTML">
+                  hx-post="@Url.Action("Delete")" hx-target="#kb-toasts" hx-select="#kb-toasts" hx-swap="outerHTML">
                 <input type="hidden" name="token" value="@Model.Token" />
-                <input type="hidden" name="boardToken" value="@boardToken" />
                 <button type="submit" class="kb-btn-secondary kb-view-delete">Delete</button>
             </form>
         }
-        @if (inModal)
-        {
-            <button type="button" class="kb-view-close" data-bs-dismiss="modal" aria-label="Close"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
-        }
+        <button type="button" class="kb-view-close" data-bs-dismiss="modal" aria-label="Close"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
     </header>
 
-    <div class="kb-view-body">
+    @* A draft has no task yet: the rest is shown greyed out and can't be used. *@
+    <div class="kb-view-body" inert="@isDraft">
         <div class="kb-view-main">
-            @if (Model.ImageUrls.Count > 0)
+            @if (canWrite)
+            {
+                <section class="kb-view-section" data-ti-field="images">
+                    <span class="kb-view-label">Images@(Model.Images.Count > 0 ? $" · {Model.Images.Count}" : "")</span>
+                    <div class="kb-gallery kb-ti-gallery">
+                        @foreach (var image in Model.Images)
+                        {
+                            <div class="kb-ti-thumb" id="kb-ti-image-@image.Key">
+                                <img data-lightbox src="@image.Url" alt="Image of @Model.Title" loading="lazy" />
+                                <form asp-action="RemoveImage" method="post" class="kb-ti-thumb-form"
+                                      hx-post="@Url.Action("RemoveImage")" hx-include="#kb-ti-keys"
+                                      hx-target="#kb-task-view" hx-select="#kb-task-view" hx-select-oob="#kb-toasts" hx-swap="morph:outerHTML">
+                                    <input type="hidden" name="imageToken" value="@image.Token" />
+                                    <button type="submit" class="kb-ti-x kb-ti-thumb-x" aria-label="Remove image">@xIcon</button>
+                                </form>
+                            </div>
+                        }
+                        <label class="kb-ti-add-tile">
+                            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                            Add images
+                            <input type="file" class="kb-ti-file" multiple accept="@imageTypes"
+                                   data-ti-pick data-max-files="@Model.UploadMaxFiles" data-max-bytes="@Model.UploadMaxBytes" data-extensions="@imageTypes" />
+                        </label>
+                    </div>
+                    @if (!isDraft)
+                    {
+                        @* Sent by the "Upload N" button of the preview popup (#kb-upload-modal, task-inline.js). *@
+                        <form asp-action="AddImages" method="post" enctype="multipart/form-data" hidden
+                              hx-post="@Url.Action("AddImages")" hx-encoding="multipart/form-data" hx-include="#kb-ti-keys"
+                              hx-target="#kb-task-view" hx-select="#kb-task-view" hx-select-oob="#kb-toasts" hx-swap="morph:outerHTML"
+                              data-ti-upload-form>
+                            <input type="file" name="images" multiple data-ti-upload-input />
+                        </form>
+                    }
+                </section>
+            }
+            else if (Model.Images.Count > 0)
             {
                 <section class="kb-view-section">
-                    <span class="kb-view-label">Images · @Model.ImageUrls.Count</span>
+                    <span class="kb-view-label">Images · @Model.Images.Count</span>
                     <div class="kb-gallery">
-                        @foreach (var url in Model.ImageUrls)
+                        @foreach (var image in Model.Images)
                         {
-                            <img data-lightbox src="@url" alt="Image of @Model.Title" loading="lazy" />
+                            <img data-lightbox src="@image.Url" alt="Image of @Model.Title" loading="lazy" />
                         }
                     </div>
                 </section>
             }
 
-            <section class="kb-view-section">
+            <section class="kb-view-section" data-ti-field="@(canWrite ? "description" : null)" data-morph-skip="@Skip("description")">
                 <span class="kb-view-label">Description</span>
-                @if (string.IsNullOrWhiteSpace(Model.Description))
+                @if (canWrite)
+                {
+                    <div class="kb-ti-editable kb-ti-desc" role="button" tabindex="0" aria-label="Edit description" hidden="@Open("description")" data-ti-display data-ti-open>
+                        @if (string.IsNullOrWhiteSpace(Model.Description))
+                        {
+                            <p class="kb-view-empty">Add a description…</p>
+                        }
+                        else
+                        {
+                            <p class="kb-view-desc">@Model.Description</p>
+                        }
+                    </div>
+                    <form asp-action="UpdateDescription" method="post" class="kb-ti-editor" hidden="@(!Open("description"))"
+                          hx-post="@Url.Action("UpdateDescription")" hx-include="#kb-ti-keys"
+                          hx-target="#kb-task-view" hx-select="#kb-task-view" hx-select-oob="#kb-toasts" hx-swap="morph:outerHTML"
+                          data-ti-editor>
+                        <textarea name="description" class="kb-ti-input kb-ti-textarea" rows="4" aria-label="Description" maxlength="@TaskFormDto.DescriptionMaxLength"
+                                  data-val="true" data-val-length="@string.Format(ErrorMessages.DescriptionTooLong, nameof(TaskFormDto.Description), TaskFormDto.DescriptionMaxLength)" data-val-length-max="@TaskFormDto.DescriptionMaxLength"
+                                  data-ti-input>@descriptionValue</textarea>
+                        @Html.ValidationMessage("description", new { @class = "text-danger kb-ti-error" })
+                        <div class="kb-ti-actions">
+                            <button type="submit" class="kb-btn-primary kb-ti-small">Save</button>
+                            <button type="button" class="kb-btn-secondary kb-ti-small" data-ti-cancel>Cancel</button>
+                            <span class="kb-ti-hint">Ctrl+Enter to save</span>
+                        </div>
+                    </form>
+                }
+                else if (string.IsNullOrWhiteSpace(Model.Description))
                 {
                     <p class="kb-view-empty">No description.</p>
                 }
@@ -77,17 +231,69 @@
                 }
             </section>
 
-            <partial name="_TaskChecklists" model="new Columnist.Tasks.Features.Checklists.Queries.GetTaskChecklists.GetTaskChecklistsModel { TaskToken = Model.Token, TaskKey = Model.Key, Checklists = Model.Checklists }" />
+            @if (!isDraft)
+            {
+                <partial name="_TaskChecklists" model="new Columnist.Tasks.Features.Checklists.Queries.GetTaskChecklists.GetTaskChecklistsModel { TaskToken = Model.Token, TaskKey = Model.Key, Checklists = Model.Checklists, CanWrite = Model.CanWrite }" />
 
-            <div id="kb-comments" hx-get="@Url.Action("Comments", new { token = Model.Token })" hx-trigger="load" hx-swap="outerHTML">
-                <p class="kb-view-empty">Loading comments…</p>
-            </div>
+                <section id="kb-comments" class="kb-skel-delay" aria-busy="true" aria-label="Loading comments"
+                         hx-get="@Url.Action("Comments", new { token = Model.Token })" hx-trigger="load" hx-swap="outerHTML">
+                    <partial name="Skeletons/_SkeletonCommentRows" />
+                </section>
+            }
         </div>
 
         <aside class="kb-view-side" aria-label="Task details">
-            <div class="kb-view-field">
+            <div class="kb-view-field" data-ti-field="@(canWrite ? "assignees" : null)">
                 <span class="kb-view-label">Assignees</span>
-                @if (Model.Assignees.Count == 0)
+                @if (canWrite)
+                {
+                    <form asp-action="SetAssignees" method="post" class="kb-ti-people"
+                          hx-post="@Url.Action("SetAssignees")" hx-include="#kb-ti-keys"
+                          hx-target="#kb-task-view" hx-select="#kb-task-view" hx-select-oob="#kb-toasts" hx-swap="morph:outerHTML">
+                        <ul class="kb-ti-chips">
+                            @foreach (var member in Model.Members.OrderBy(m => assignedKeys.Contains(m.Key) ? 0 : 1))
+                            {
+                                <li class="kb-ti-chip" id="kb-ti-chip-@member.Key" hidden="@(!assignedKeys.Contains(member.Key))" data-ti-chip="@member.Key">
+                                    @Html.AvatarCircle(member.FullName, member.Initials, noAccess: !member.HasAccess, photoUrl: member.PhotoUrl)
+                                    <span class="kb-ti-chip-name">@member.FullName</span>
+                                    @if (!member.HasAccess)
+                                    {
+                                        <span class="kb-noaccess-tag">No access</span>
+                                    }
+                                    <button type="submit" class="kb-ti-x" name="remove" value="@member.Token" aria-label="Remove @member.FullName" data-ti-chip-remove>@xIcon</button>
+                                </li>
+                            }
+                            <li class="kb-ti-add-wrap" data-ti-menu-root>
+                                <button type="button" class="kb-ti-add" aria-expanded="false" aria-haspopup="true" data-ti-menu-toggle>
+                                    <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                                    Add
+                                </button>
+                                <div class="kb-ti-people-menu" hidden data-ti-menu>
+                                    @await Component.InvokeAsync("SearchBox", new { url = (string?)null, target = (string?)null, value = (string?)null, placeholder = "Search people…", clientOnly = true })
+                                    <ul class="kb-ti-people-list">
+                                        @foreach (var member in Model.Members)
+                                        {
+                                            <li id="kb-ti-member-@member.Key" data-ti-person data-name="@member.FullName">
+                                                <label class="kb-ap-option">
+                                                    <input type="checkbox" class="form-check-input" name="assigneeTokens" value="@member.Token"
+                                                           checked="@assignedKeys.Contains(member.Key)" data-ti-assign="@member.Key" />
+                                                    <span class="kb-ap-avatar">@Html.AvatarCircle(member.FullName, member.Initials, noAccess: !member.HasAccess, photoUrl: member.PhotoUrl)</span>
+                                                    <span class="kb-ap-option-name">@member.FullName</span>
+                                                    @if (!member.HasAccess)
+                                                    {
+                                                        <span class="kb-noaccess-tag">No access</span>
+                                                    }
+                                                </label>
+                                            </li>
+                                        }
+                                        <li class="kb-ti-people-empty" hidden data-ti-people-empty>No members match</li>
+                                    </ul>
+                                </div>
+                            </li>
+                        </ul>
+                    </form>
+                }
+                else if (Model.Assignees.Count == 0)
                 {
                     @Html.Unassigned()
                 }
@@ -108,45 +314,77 @@
                     </ul>
                 }
             </div>
-            <div class="kb-view-field">
+            <div class="kb-view-field" data-ti-field="@(canWrite ? "dueDate" : null)" data-morph-skip="@Skip("dueDate")">
                 <span class="kb-view-label">Due date</span>
-                @Html.DueDateChip(Model.DueDate, isDone)
+                @if (canWrite)
+                {
+                    <button type="button" class="kb-ti-editable kb-ti-due" aria-label="Edit due date" hidden="@Open("dueDate")" data-ti-display data-ti-open>
+                        @Html.DueDateChip(Model.DueDate, isDone)
+                    </button>
+                    <form asp-action="UpdateDueDate" method="post" class="kb-ti-editor" hidden="@(!Open("dueDate"))"
+                          hx-post="@Url.Action("UpdateDueDate")" hx-include="#kb-ti-keys"
+                          hx-target="#kb-task-view" hx-select="#kb-task-view" hx-select-oob="#kb-toasts" hx-swap="morph:outerHTML"
+                          data-ti-editor>
+                        <input type="date" name="dueDate" class="kb-ti-input" value="@dueValue" aria-label="Due date" data-ti-input />
+                        @Html.ValidationMessage("dueDate", new { @class = "text-danger kb-ti-error" })
+                        <div class="kb-ti-actions">
+                            <button type="submit" class="kb-btn-primary kb-ti-small">Save</button>
+                            <button type="button" class="kb-btn-secondary kb-ti-small" data-ti-clear>Clear</button>
+                            <button type="button" class="kb-btn-secondary kb-ti-small" data-ti-cancel>Cancel</button>
+                        </div>
+                    </form>
+                }
+                else
+                {
+                    @Html.DueDateChip(Model.DueDate, isDone)
+                }
             </div>
             <div class="kb-view-field">
                 <span class="kb-view-label">Board</span>
                 <span class="kb-view-value">@Model.BoardName</span>
             </div>
-            <div class="kb-view-audit">
-                <div><strong>Created</strong> by @(Model.CreatedByName ?? "unknown")<br /><span>@Model.CreatedAt.ToString("dd MMM yyyy, HH:mm")</span></div>
-                @if (Model.UpdatedAt is { } updatedAt)
-                {
-                    <div><strong>Updated</strong> by @(Model.UpdatedByName ?? "unknown")<br /><span>@updatedAt.ToString("dd MMM yyyy, HH:mm")</span></div>
-                }
-                @* Live refresh (live-board.js) morphs this region; always rendered so the first entry can appear. *@
-                <div id="kb-task-history" hx-ext="morph" data-task-history-url="@Url.Action("Details", new { token = Model.Token, boardToken })">
-                @if (Model.History.Count > 0)
-                {
-                    <div class="au-history">
-                        <button type="button" class="kb-btn-secondary au-history-toggle" data-history-toggle aria-expanded="false" aria-controls="kb-task-history-list">View history</button>
-                        <div id="kb-task-history-list" data-history hidden>
-                            <ol class="au-timeline">
-                                @for (var i = 0; i < Model.History.Count; i++)
+            @if (!isDraft)
+            {
+                <div class="kb-view-audit">
+                    <div><strong>Created</strong> by @(Model.CreatedByName ?? "unknown")<br /><span>@Model.CreatedAt.ToString("dd MMM yyyy, HH:mm")</span></div>
+                    @if (Model.UpdatedAt is { } updatedAt)
+                    {
+                        <div><strong>Updated</strong> by @(Model.UpdatedByName ?? "unknown")<br /><span>@updatedAt.ToString("dd MMM yyyy, HH:mm")</span></div>
+                    }
+                    <div id="kb-task-history">
+                    @if (Model.History.Count > 0)
+                    {
+                        <div class="au-history">
+                            <button type="button" class="kb-btn-secondary au-history-toggle" data-history-toggle aria-expanded="false" aria-controls="kb-task-history-list">View history</button>
+                            <div id="kb-task-history-list" data-history hidden>
+                                <ol class="au-timeline">
+                                    @for (var i = 0; i < Model.History.Count; i++)
+                                    {
+                                        <li class="au-tl-item" hidden="@(i >= 5)" data-history-older="@(i >= 5)">
+                                            <span class="au-tl-dot" aria-hidden="true"></span>
+                                            <partial name="_AuditEntry" model="Model.History[i]" view-data='new ViewDataDictionary(ViewData) { ["AuditStyle"] = "timeline" }' />
+                                        </li>
+                                    }
+                                </ol>
+                                @if (Model.History.Count > 5)
                                 {
-                                    <li class="au-tl-item" hidden="@(i >= 5)" data-history-older="@(i >= 5)">
-                                        <span class="au-tl-dot" aria-hidden="true"></span>
-                                        <partial name="_AuditEntry" model="Model.History[i]" view-data='new ViewDataDictionary(ViewData) { ["AuditStyle"] = "timeline" }' />
-                                    </li>
+                                    <button type="button" class="au-history-more" data-history-more>Show @(Model.History.Count - 5) older</button>
                                 }
-                            </ol>
-                            @if (Model.History.Count > 5)
-                            {
-                                <button type="button" class="au-history-more" data-history-more>Show @(Model.History.Count - 5) older</button>
-                            }
+                            </div>
                         </div>
+                    }
                     </div>
-                }
                 </div>
-            </div>
+            }
         </aside>
     </div>
 </div>
+@if (ViewData["TaskToasts"] is true)
+{
+    <partial name="_TaskToasts" />
+}
+@* A field save made on the board: the task's card too, swapped out of band (FieldSavedAsync). *@
+@if (ViewData["Card"] is Columnist.Tasks.Features.Tasks.Queries.GetBoard.Models.GetBoardTaskModel card)
+{
+    <partial name="_TaskCard" model="card" view-data='new ViewDataDictionary(ViewData) { ["CardOob"] = true }' />
+}

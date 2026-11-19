@@ -1,6 +1,3 @@
-// Account menu → "Profile" popup (#kb-profile-modal in _Layout). Opens with a spinner while _Profile loads,
-// picks a photo (the file input submits its form on change), and shows/hides the "Change password" fields.
-// Event delegation only; elements are looked up when an event fires.
 (function () {
     function modalEl() {
         return document.getElementById('kb-profile-modal');
@@ -16,23 +13,17 @@
         return !!body && target === body;
     }
 
-    // Open the popup (and close the account menu) as soon as the request starts; the spinner shows until _Profile swaps in.
-    document.addEventListener('htmx:beforeRequest', function (evt) {
-        if (evt.defaultPrevented || !targetsBody(evt)) return;
+    function showModal() {
         var modal = modalEl();
-        if (!modal) return;
+        if (modal && !modal.classList.contains('show')) bootstrap.Modal.getOrCreateInstance(modal).show();
+    }
 
-        document.querySelectorAll('[data-user-menu-toggle][aria-expanded="true"]').forEach(function (toggle) {
-            var menu = toggle.parentElement.querySelector('[data-user-menu]');
-            if (menu) menu.hidden = true;
-            toggle.setAttribute('aria-expanded', 'false');
-        });
-
-        bodyEl().innerHTML =
-            '<div class="kb-modal-loading" role="status" aria-live="polite">' +
-            '<span class="kb-spinner" aria-hidden="true"></span>' +
-            '<span class="kb-modal-loading-text">Loading…</span></div>';
-        if (!modal.classList.contains('show')) bootstrap.Modal.getOrCreateInstance(modal).show();
+    // Open the popup only once it has something to show: the loading skeleton (a slow load) or _Profile.
+    document.addEventListener('kb:skeleton-shown', function (evt) {
+        if (evt.target === bodyEl()) showModal();
+    });
+    document.addEventListener('htmx:afterSwap', function (evt) {
+        if (evt.target === bodyEl()) showModal();
     });
 
     function showLoadError(evt) {
@@ -41,6 +32,7 @@
             '<div class="kb-modal-loading" role="alert">' +
             '<span class="kb-modal-loading-text">Could not load this. Try again</span>' +
             '<button type="button" class="kb-btn-secondary" data-bs-dismiss="modal">Close</button></div>';
+        showModal();
     }
     document.addEventListener('htmx:responseError', showLoadError);
     document.addEventListener('htmx:sendError', showLoadError);
@@ -50,10 +42,46 @@
             document.activeElement.blur();
         }
     });
+    // Stacked popups: put each newly opened popup and its backdrop above the ones already open.
+    document.addEventListener('show.bs.modal', function (e) {
+        var alreadyOpen = document.querySelectorAll('.modal.show').length;
+        if (alreadyOpen === 0) return;
+        e.target.style.zIndex = 1055 + alreadyOpen * 10;
+    });
+
+    document.addEventListener('shown.bs.modal', function (e) {
+        var alreadyOpen = document.querySelectorAll('.modal.show').length - 1;
+        if (alreadyOpen === 0) return;
+        var backdrops = document.querySelectorAll('.modal-backdrop');
+        var last = backdrops[backdrops.length - 1];
+        if (last) last.style.zIndex = 1054 + alreadyOpen * 10;
+    });
+
+    document.addEventListener('hidden.bs.modal', function (e) {
+        e.target.style.zIndex = '';
+    });
     document.addEventListener('hidden.bs.modal', function (evt) {
         if (evt.target.id !== 'kb-profile-modal') return;
         var body = bodyEl();
         if (body) body.innerHTML = '';
+    });
+
+    // A successful "Save changes" re-renders the profile with data-profile-close: close the popup (its toast moves to the page).
+    htmx.onLoad(function (elt) {
+        if (!elt.matches || !elt.matches('#kb-profile[data-profile-close]')) return;
+        var modal = modalEl();
+        if (modal) bootstrap.Modal.getOrCreateInstance(modal).hide();
+    });
+
+    // "Save changes" is enabled only while the full name or username differs from the saved value.
+    document.addEventListener('input', function (evt) {
+        var form = evt.target.closest && evt.target.closest('[data-profile-details]');
+        if (!form) return;
+        var changed = Array.prototype.some.call(form.querySelectorAll('[data-saved]'), function (input) {
+            return input.value.trim() !== input.dataset.saved;
+        });
+        var save = form.querySelector('[data-profile-save]');
+        if (save) save.disabled = !changed;
     });
 
     function passwordForm(root) {
@@ -81,7 +109,6 @@
             if (first) first.focus();
             return;
         }
-
         // Cancel: hide the fields again, empty them and drop their errors.
         var cancel = evt.target.closest('[data-profile-password-cancel]');
         if (cancel) {
@@ -94,4 +121,5 @@
             if (button) button.hidden = false;
         }
     });
+
 })();

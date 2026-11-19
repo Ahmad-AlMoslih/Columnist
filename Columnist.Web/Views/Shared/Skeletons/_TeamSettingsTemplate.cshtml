@@ -1,0 +1,55 @@
+@* Team settings (Teams/Settings): the header, the name, code, members and logs cards, and the danger zone. *@
+<template data-skeleton-template="team-settings">
+    <div class="kb-skel lb-page">
+        <partial name="Skeletons/_SkeletonPageHeader" model="false" />
+        <div class="ts-grid">
+            <section class="ts-card">
+                <h2 class="ts-label"><span class="kb-skel-block kb-skel-text kb-skel-label"></span></h2>
+                <div class="ts-inline">
+                    <span class="kb-skel-block kb-skel-input kb-skel-h-44 kb-skel-grow"></span>
+                    <span class="kb-skel-block kb-skel-strong kb-skel-btn-lg"></span>
+                </div>
+            </section>
+            <section class="ts-card">
+                <h2 class="ts-label"><span class="kb-skel-block kb-skel-text kb-skel-label"></span></h2>
+                <div class="ts-inline">
+                    <span class="kb-skel-block kb-skel-strong kb-skel-code kb-skel-grow"></span>
+                    <span class="kb-skel-block kb-skel-btn-lg"></span>
+                </div>
+                <p class="ts-note">
+                    <span class="kb-skel-block kb-skel-text kb-skel-w-90"></span>
+                    <span class="kb-skel-block kb-skel-text kb-skel-w-80"></span>
+                    <span class="kb-skel-block kb-skel-text kb-skel-w-45"></span>
+                </p>
+            </section>
+            <section class="ts-card ts-wide">
+                <h2 class="ts-label"><span class="kb-skel-block kb-skel-text kb-skel-label"></span></h2>
+                <div>
+                    <div class="ts-row" data-skeleton-repeat="3">
+                        <span class="kb-skel-block kb-skel-strong kb-skel-circle kb-skel-avatar-md"></span>
+                        <div class="ts-person">
+                            <strong><span class="kb-skel-block kb-skel-text kb-skel-name"></span></strong>
+                            <span><span class="kb-skel-block kb-skel-text kb-skel-label"></span></span>
+                        </div>
+                        <span class="ts-status"><span class="kb-skel-block kb-skel-text kb-skel-subtitle"></span></span>
+                        <span class="kb-skel-block kb-skel-remove"></span>
+                    </div>
+                </div>
+                <p class="ts-note"><span class="kb-skel-block kb-skel-text kb-skel-w-65"></span></p>
+            </section>
+            <section class="ts-card ts-wide">
+                <h2 class="ts-label"><span class="kb-skel-block kb-skel-text kb-skel-label"></span></h2>
+                <p class="ts-note"><span class="kb-skel-block kb-skel-text kb-skel-w-45"></span></p>
+                <partial name="Skeletons/_SkeletonLogFilters" model="5" />
+                <div class="au-list kb-skel-log-rows">
+                    <partial name="Skeletons/_SkeletonLogRows" />
+                </div>
+            </section>
+        </div>
+        <section class="lb-card ts-danger">
+            <h2 class="lb-h"><span class="kb-skel-block kb-skel-strong kb-skel-text kb-skel-name"></span></h2>
+            <p class="ts-note"><span class="kb-skel-block kb-skel-text kb-skel-w-45"></span></p>
+            <span class="kb-skel-block kb-skel-strong kb-skel-btn kb-skel-h-40"></span>
+        </section>
+    </div>
+</template>

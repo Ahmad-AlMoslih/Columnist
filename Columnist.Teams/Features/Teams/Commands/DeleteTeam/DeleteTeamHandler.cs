@@ -1,4 +1,5 @@
 using Columnist.Auth.Security.CurrentUser;
+using Columnist.Auth.Security.Teams;
 using Columnist.Contracts.Dtos;
 using Columnist.DataAccess;
 using Columnist.Services.Realtime;
@@ -14,10 +15,12 @@ public sealed class DeleteTeamHandler : IRequestHandler<DeleteTeamCommand, ApiRe
 {
     private readonly IDbExecutor _db;
     private readonly IUserContext _userContext;
+    private readonly IUserTeamsService _teams;
     private readonly IBoardNotifier _notifier;
 
-    public DeleteTeamHandler(IDbExecutor db, IUserContext userContext, IBoardNotifier notifier)
+    public DeleteTeamHandler(IDbExecutor db, IUserContext userContext, IBoardNotifier notifier, IUserTeamsService teams)
     {
+        _teams = teams;
         _db = db;
         _userContext = userContext;
         _notifier = notifier;
@@ -29,13 +32,9 @@ public sealed class DeleteTeamHandler : IRequestHandler<DeleteTeamCommand, ApiRe
         if (teamId is null)
             return ApiResponse<bool>.NotFound(ErrorMessages.TeamNotFound);
 
-        var userParameters = new DynamicParameters();
-        userParameters.Add("@UserId", _userContext.UserId);
-
-        var teams = await _db.QueryAsync<TeamDto>("dbo.GetUserTeams", userParameters, cancellationToken);
-        var team = teams.FirstOrDefault(t => t.Id == teamId.Value && t.IsOwner);
+        var team = (await _teams.GetAsync(cancellationToken)).FirstOrDefault(t => t.Id == teamId.Value);
         if (team is null)
-            return ApiResponse<bool>.Forbidden(ErrorMessages.Forbidden);
+            return ApiResponse<bool>.NotFound(ErrorMessages.TeamNotFound);
 
         if (request.ConfirmName?.Trim() != team.Name)
             return ApiResponse<bool>.BadRequest(ErrorMessages.DeleteNameMismatch);

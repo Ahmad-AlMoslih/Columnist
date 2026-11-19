@@ -1,37 +1,22 @@
-using Columnist.Auth.Security.CurrentUser;
-using Columnist.Contracts.Dtos;
-using Columnist.DataAccess;
+using Columnist.Auth.Security.Teams;
 using Columnist.Services.Tokens.Extensions;
 using Columnist.Teams.Features.Teams.Queries.GetMyTeams.Models;
 using Columnist.Utilities.Response;
-using Dapper;
 using MediatR;
 
 namespace Columnist.Teams.Features.Teams.Queries.GetMyTeams;
 
 public sealed class GetMyTeamsHandler : IRequestHandler<GetMyTeamsQuery, ApiResponse<GetMyTeamsModel>>
 {
-    private readonly IDbExecutor _db;
-    private readonly IUserContext _userContext;
+    private readonly IUserTeamsService _teams;
 
-    public GetMyTeamsHandler(IDbExecutor db, IUserContext userContext)
-    {
-        _db = db;
-        _userContext = userContext;
-    }
+    public GetMyTeamsHandler(IUserTeamsService teams) => _teams = teams;
 
     public async Task<ApiResponse<GetMyTeamsModel>> Handle(GetMyTeamsQuery request, CancellationToken cancellationToken)
     {
-        var parameters = new DynamicParameters();
-        parameters.Add("@UserId", _userContext.UserId);
-
-        var rows = await _db.QueryAsync<TeamDto>("dbo.GetUserTeams", parameters, cancellationToken);
-        var now = DateTime.Now;   // the DB stores local times (SYSDATETIME)
-        bool IsActive(TeamDto t) => t.IsOwner || t.AccessExpiresAt > now;
-
-        var currentId = string.IsNullOrEmpty(request.CurrentTeamToken) ? null : request.CurrentTeamToken.Decrypt<int>();
+        var rows = await _teams.GetAsync(cancellationToken);
         // Current team = the cookie's team if still active, otherwise the first active team, otherwise none (lobby).
-        var current = rows.FirstOrDefault(t => t.Id == currentId && IsActive(t)) ?? rows.FirstOrDefault(IsActive);
+        var current = await _teams.GetCurrentAsync(request.CurrentTeamToken, cancellationToken);
 
         IReadOnlyList<MyTeamModel> teams = rows
             .Select(t => new MyTeamModel
@@ -40,7 +25,7 @@ public sealed class GetMyTeamsHandler : IRequestHandler<GetMyTeamsQuery, ApiResp
                 Name = t.Name,
                 IsOwner = t.IsOwner,
                 AccessExpiresAt = t.AccessExpiresAt,
-                IsExpired = !IsActive(t),
+                IsExpired = !_teams.IsActive(t),
                 IsCurrent = current is not null && t.Id == current.Id
             })
             .ToList();

@@ -1,14 +1,11 @@
 @model Columnist.Web.Models.ManageBoardViewModel
-@using Columnist.Auth.Authorization
-@inject Columnist.Auth.Security.Boards.IBoardAccessService BoardAccess
 @{
     ViewData["Title"] = Model.Title;
-    // Only the team's Super Admin can open this page, so "Manage board" is always allowed here.
     var boardMenu = Model.BoardToken is null ? null : new Columnist.Web.Models.BoardUserMenuViewModel(
         Model.BoardToken,
-        await BoardAccess.HasPermissionAsync(new BoardScope(BoardToken: Model.BoardToken), Permission.DeletedTasksRead),
-        await BoardAccess.HasPermissionAsync(new BoardScope(BoardToken: Model.BoardToken), Permission.LogsRead),
-        true);
+        Model.Access?.CanSeeDeleted ?? Model.Columns?.CanSeeDeleted ?? false,
+        Model.Access?.CanSeeLogs ?? Model.Columns?.CanSeeLogs ?? false,
+        Model.Access?.CanManage ?? Model.Columns?.CanManage ?? false);
 }
 
 @if (boardMenu?.Any == true)
@@ -46,14 +43,18 @@
         title = Model.Title,
         subtitle = "Who can use this board and how its columns are set up.",
         backUrl = Url.Action("Index", "Tasks", new { area = "Tasks", boardToken = Model.BoardToken }),
-        backLabel = "Back to board"
+        backLabel = "Back to board",
+        backSkeleton = "board",
+        backSkeletonLabel = "Loading board"
     })
 
     @if (Model.BoardToken is not null)
     {
         <nav class="bm-tabs" aria-label="Manage board" hx-boost="true" hx-target="#kb-page" hx-select="#kb-page" hx-swap="outerHTML show:window:top">
-            <a class="bm-tab @(Model.Section == "access" ? "active" : null)" aria-current="@(Model.Section == "access" ? "page" : null)" asp-action="Manage" asp-route-token="@Model.BoardToken" asp-route-section="access">Access</a>
-            <a class="bm-tab @(Model.Section == "columns" ? "active" : null)" aria-current="@(Model.Section == "columns" ? "page" : null)" asp-action="Manage" asp-route-token="@Model.BoardToken" asp-route-section="columns">Columns</a>
+            <a class="bm-tab @(Model.Section == "access" ? "active" : null)" aria-current="@(Model.Section == "access" ? "page" : null)" asp-action="Manage" asp-route-token="@Model.BoardToken" asp-route-section="access"
+               data-skeleton="manage-access" data-skeleton-into="[data-page-main]" data-skeleton-label="Loading board access">Access</a>
+            <a class="bm-tab @(Model.Section == "columns" ? "active" : null)" aria-current="@(Model.Section == "columns" ? "page" : null)" asp-action="Manage" asp-route-token="@Model.BoardToken" asp-route-section="columns"
+               data-skeleton="manage-columns" data-skeleton-into="[data-page-main]" data-skeleton-label="Loading board columns">Columns</a>
         </nav>
     }
 

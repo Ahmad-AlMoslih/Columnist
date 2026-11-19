@@ -3,6 +3,7 @@
 
 .login-header { padding: 28px 32px 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .login-brand { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.brand-logo-picture { display: contents; }
 .login-brand-logo { height: 120px; width: auto; display: block; mix-blend-mode: multiply; }
 .login-brand-text { display: flex; flex-direction: column; gap: 2px; }
 .login-brand-tagline { font-size: 12px; font-weight: 500; color: var(--kb-text-muted); }

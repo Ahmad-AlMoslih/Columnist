@@ -1,0 +1,71 @@
+@model Columnist.Tasks.Features.Reports.Queries.GetBoardDashboard.Models.GetBoardDashboardModel
+@{
+    ViewData["Title"] = "Dashboard";
+    ViewData["Crumb"] = Model.BoardName;
+    var boardMenu = new Columnist.Web.Models.BoardUserMenuViewModel(Model.BoardToken, Model.CanSeeDeleted, Model.CanSeeLogs, Model.CanManage);
+}
+
+@if (boardMenu.Any)
+{
+    @section UserMenu {
+        <partial name="_BoardUserMenu" model="boardMenu" />
+    }
+}
+
+
+@if (!Context.Request.IsTabSwap())
+{
+    <div id="kb-page-tabs" class="kb-page-tabs" hidden="@(!(Model.CanSeeReports || Model.CanManage))">
+        @if ((Model.CanSeeReports || Model.CanManage))
+        {
+            <partial name="_BoardPageTabs" model='new Columnist.Web.Models.BoardPageTabsViewModel(Model.BoardToken, Columnist.Web.Models.BoardPageTabsViewModel.Dashboard)' />
+        }
+    </div>
+}
+
+<div id="kb-tab-page" data-page="dashboard">
+<partial name="~/Areas/Tasks/Views/Tasks/_TaskToasts.cshtml" />
+
+<section class="kb-deleted">
+    @await Component.InvokeAsync("PageHeader", new
+    {
+        title = "Dashboard",
+        subtitle = Model.BoardName,
+        backUrl = Url.Action("Index", "Tasks", new { area = "Tasks", boardToken = Model.BoardToken }),
+        backLabel = "Back to board",
+        backSkeleton = "board",
+        backSkeletonLabel = "Loading board"
+    })
+
+    @* Live refresh (live-board.js) morphs this region in place from data-refresh-url; an open "View all" popup then
+       re-loads its card's rows (dashboard.js). *@
+    <div id="kb-report-region" hx-ext="morph" data-board-token="@Model.BoardToken"
+         data-refresh-url="@Url.Action("Dashboard", "Reports", new { area = "Tasks", board = Model.BoardToken })">
+        <div class="db-grid">
+            @foreach (var card in Model.Cards)
+            {
+                <partial name="_DashboardCard" model="card" view-data='new ViewDataDictionary(ViewData) { ["ReportBoard"] = Model.BoardToken }' />
+            }
+        </div>
+    </div>
+</section>
+
+@* A card's "View all" (dashboard.js): its rows, loaded when it opens (Reports/DashboardCard). The task popup opens on top. *@
+<div class="modal fade" id="kb-dash-modal" tabindex="-1" aria-labelledby="kb-dash-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered db-dialog">
+        <div class="modal-content kb-modal db-modal">
+            <div class="db-modal-head">
+                <span class="db-modal-icon" data-dash-modal-icon></span>
+                <h2 class="db-modal-title" id="kb-dash-title"><span data-dash-modal-title></span> <span class="db-modal-count">· <span data-dash-modal-count>0</span></span></h2>
+                <button type="button" class="kb-view-close" data-bs-dismiss="modal" aria-label="Close"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+            </div>
+            <div class="db-modal-body" data-dash-modal-body>
+                <ul class="rp-rows" data-dash-modal-list></ul>
+                <p class="db-empty" hidden data-dash-modal-empty></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<partial name="_TaskModals" />
+</div>

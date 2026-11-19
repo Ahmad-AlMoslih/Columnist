@@ -32,14 +32,6 @@ public sealed class GetTeamLogsHandler : IRequestHandler<GetTeamLogsQuery, ApiRe
         if (teamId is null)
             return ApiResponse<GetTeamLogsModel>.NotFound(ErrorMessages.TeamNotFound);
 
-        var userParameters = new DynamicParameters();
-        userParameters.Add("@UserId", _userContext.UserId);
-
-        var teams = await _db.QueryAsync<TeamDto>("dbo.GetUserTeams", userParameters, cancellationToken);
-        var team = teams.FirstOrDefault(t => t.Id == teamId.Value && t.IsOwner);
-        if (team is null)
-            return ApiResponse<GetTeamLogsModel>.Forbidden(ErrorMessages.Forbidden);
-
         // A person token that doesn't decrypt is ignored (no person filter).
         var actorId = string.IsNullOrEmpty(request.ActorToken) ? null : request.ActorToken.Decrypt<int>();
         var search = request.Search?.Trim();

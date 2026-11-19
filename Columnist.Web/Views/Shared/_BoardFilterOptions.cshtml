@@ -1,0 +1,33 @@
+@model Columnist.Tasks.Features.Tasks.Queries.GetBoard.Models.BoardFilterModel
+@using Columnist.Web.Application.Components.Helpers
+@* The board filter's assignee options (BoardFilter). On the board only the chosen people are here; the first time the
+   dropdown opens, board-filter.js replaces the list with the full one (Tasks/FilterMembers, ViewData "FilterOptionsLoaded"). *@
+<ul class="kb-filter-options" data-filter-options data-filter-loaded="@(ViewData["FilterOptionsLoaded"] is true ? "true" : null)"
+    data-members-url="@Url.Action("FilterMembers", "Tasks", new { area = "Tasks" })">
+    <li data-filter-option data-name="Me">
+        <label class="kb-ap-option">
+            <input type="checkbox" class="form-check-input" name="assignees" value="@Model.MeToken" checked="@Model.MeSelected" data-filter-input data-filter-label="Me" />
+            <span class="kb-ap-option-name">Me</span>
+        </label>
+    </li>
+    @foreach (var member in Model.Members)
+    {
+        <li data-filter-option data-name="@member.Name">
+            <label class="kb-ap-option">
+                <input type="checkbox" class="form-check-input" name="assignees" value="@member.Token" checked="@member.Selected" data-filter-input data-filter-label="@member.FirstName" />
+                <span class="kb-ap-avatar">@Html.AvatarCircle(member.Name, noAccess: !member.HasAccess, photoUrl: member.PhotoUrl)</span>
+                <span class="kb-ap-option-name">@member.Name</span>
+                @if (!member.HasAccess)
+                {
+                    <span class="kb-noaccess-tag">No access</span>
+                }
+            </label>
+        </li>
+    }
+    <li data-filter-option data-name="Unassigned">
+        <label class="kb-ap-option">
+            <input type="checkbox" class="form-check-input" name="unassigned" value="1" checked="@Model.Unassigned" data-filter-input data-filter-label="Unassigned" />
+            <span class="kb-ap-option-name">Unassigned</span>
+        </label>
+    </li>
+</ul>

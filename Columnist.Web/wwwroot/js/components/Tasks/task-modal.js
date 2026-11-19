@@ -8,28 +8,20 @@
         return document.getElementById('kb-task-modal-body');
     }
 
-    // Live refreshes (live-board.js) must not close the open popup.
-    function isLive(evt) {
-        var config = evt.detail.requestConfig;
-        return !!(config && config.headers && config.headers['X-Live-Refresh']);
-    }
-
     function targetsBody(evt) {
         var body = bodyEl();
         var target = evt.detail.target || (evt.detail.requestConfig && evt.detail.requestConfig.target);
         return !!body && target === body;
     }
 
-    // Open the popup as soon as a request for it starts; the spinner shows until the content swaps in.
-    document.addEventListener('htmx:beforeRequest', function (evt) {
-        if (evt.defaultPrevented || !targetsBody(evt)) return;
+    function showModal() {
         var modal = modalEl();
-        if (!modal) return;
-        bodyEl().innerHTML =
-            '<div class="kb-modal-loading" role="status" aria-live="polite">' +
-            '<span class="kb-spinner" aria-hidden="true"></span>' +
-            '<span class="kb-modal-loading-text">Loading…</span></div>';
-        if (!modal.classList.contains('show')) bootstrap.Modal.getOrCreateInstance(modal).show();
+        if (modal && !modal.classList.contains('show')) bootstrap.Modal.getOrCreateInstance(modal).show();
+    }
+
+    // Open the popup only once it has something to show: the loading skeleton (skeleton.js, a slow load) or the content.
+    document.addEventListener('kb:skeleton-shown', function (evt) {
+        if (evt.target === bodyEl()) showModal();
     });
 
     function showLoadError(evt) {
@@ -38,6 +30,7 @@
             '<div class="kb-modal-loading" role="alert">' +
             '<span class="kb-modal-loading-text">Could not load this. Try again</span>' +
             '<button type="button" class="kb-btn-secondary" data-bs-dismiss="modal">Close</button></div>';
+        showModal();
     }
     document.addEventListener('htmx:responseError', showLoadError);
     document.addEventListener('htmx:sendError', showLoadError);
@@ -48,13 +41,22 @@
     });
 
     document.addEventListener('htmx:afterSwap', function (evt) {
+        var body = bodyEl();
+        if (body && evt.target === body) showModal();
+    });
+
+    // The popup's Delete succeeded (HX-Reswap: none; the toast and the card's removal came out of band): close the popup.
+    // A failure (the error toast swapped into #kb-toasts) leaves it open.
+    document.addEventListener('htmx:afterRequest', function (evt) {
+        var form = evt.detail.elt;
+        if (!form || !form.matches || !form.matches('.kb-view-delete-form')) return;
+        var xhr = evt.detail.xhr;
+        if (!evt.detail.successful || !xhr || xhr.getResponseHeader('HX-Reswap') !== 'none') return;
         var modal = modalEl();
         var body = bodyEl();
         if (!modal || !body) return;
-        if (evt.target.id === 'kb-board-region' && modal.classList.contains('show') && !isLive(evt)) {
-            bootstrap.Modal.getOrCreateInstance(modal).hide();
-            body.innerHTML = '';
-        }
+        bootstrap.Modal.getOrCreateInstance(modal).hide();
+        body.innerHTML = '';
     });
 
     document.addEventListener('hidden.bs.modal', function (evt) {
@@ -110,7 +112,7 @@
 
     document.addEventListener('click', function (evt) {
         var card = evt.target.closest && evt.target.closest('[data-card-token]');
-        if (!card || evt.target.closest('a, button, input, form, .dropdown, [data-lightbox]')) return;
+        if (!card || evt.target.closest('a, button, input, form, [data-lightbox]')) return;
         if (down && (Math.abs(evt.clientX - down.x) > 5 || Math.abs(evt.clientY - down.y) > 5)) return;
         var link = card.querySelector('[data-card-link]');
         if (link) link.click();

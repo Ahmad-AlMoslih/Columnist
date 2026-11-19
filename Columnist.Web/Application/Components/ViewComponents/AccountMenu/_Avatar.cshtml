@@ -1,0 +1,18 @@
+@model Columnist.Web.Application.Components.ViewComponents.AccountMenu.AccountMenuViewModel
+@* The signed-in user's avatar in the account menu: the photo, or the initials. In the board shell a skeleton circle
+   until the board request brings the real one. *@
+@if (Model.Shell)
+{
+    <span class="kb-av"><span class="kb-skel-block kb-skel-strong kb-skel-circle kb-skel-fill"></span></span>
+    return;
+}
+<span class="kb-av">
+    @if (Model.Menu?.PhotoUrl is not null)
+    {
+        <img class="kb-photo" src="@Model.Menu.PhotoUrl" alt="" />
+    }
+    else
+    {
+        @Model.Initials
+    }
+</span>

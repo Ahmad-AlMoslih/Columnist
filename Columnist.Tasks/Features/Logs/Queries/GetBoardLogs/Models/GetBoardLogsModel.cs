@@ -14,4 +14,9 @@ public sealed record GetBoardLogsModel
     public string? Search { get; init; }
     public IReadOnlyList<TokenOptionDto> Actors { get; init; } = [];
     public DateOnly? LastDay { get; init; }
+
+    // The board menu's links.
+    public bool CanSeeDeleted { get; init; }
+    public bool CanSeeLogs { get; init; }
+    public bool CanManage { get; init; }   // Super Admin of the board's team
 }

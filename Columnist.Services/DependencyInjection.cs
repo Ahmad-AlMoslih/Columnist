@@ -16,7 +16,10 @@ public static class DependencyInjection
         services.AddDataProtection()
             .SetApplicationName("Columnist")
             .PersistKeysToFileSystem(new DirectoryInfo(keysPath));
-        services.AddSingleton<IDmsService>(new DmsService(new DmsOptions { RootPath = dmsRootPath }));
+        // DmsOptions is also read on its own, e.g. for the task view's upload limits.
+        var dmsOptions = new DmsOptions { RootPath = dmsRootPath };
+        services.AddSingleton(dmsOptions);
+        services.AddSingleton<IDmsService>(new DmsService(dmsOptions));
         services.AddSingleton<IBoardNotifier, NullBoardNotifier>();
         services.Configure<EmailSettings>(configuration.GetSection("Email"));
         services.AddSingleton<IEmailSender, EmailSender>();

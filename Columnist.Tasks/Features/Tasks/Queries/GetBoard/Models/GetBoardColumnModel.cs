@@ -10,6 +10,7 @@ public sealed partial record GetBoardColumnModel
     public string ColumnToken { get; init; } = "";
     public string Name { get; init; } = "";
     public string StatusColor { get; init; } = "";
+    public bool IsDone { get; init; }   // the column's status is Done (the cards show "Done" instead of their due date)
 
     // The column's colours from its status: the background is the status colour, the header band is it mixed 80/20 with the ink.
     // Null when the status has no valid #RRGGBB colour (the neutral look).

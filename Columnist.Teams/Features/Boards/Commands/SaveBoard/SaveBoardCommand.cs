@@ -1,11 +1,15 @@
+using Columnist.Auth.Authorization;
 using Columnist.Utilities.Response;
 using MediatR;
 
 namespace Columnist.Teams.Features.Boards.Commands.SaveBoard;
 
 // BoardToken empty = new board in TeamToken's team. Columns are in display order; a column without Token is new; a column left out is deleted.
-public sealed record SaveBoardCommand(string? BoardToken, string? TeamToken, string Name, List<SaveBoardColumn>? Columns) : IRequest<ApiResponse<string>>
+[RequireTeamOwner]
+public sealed record SaveBoardCommand(string? BoardToken, string? TeamToken, string Name, List<SaveBoardColumn>? Columns) : IRequest<ApiResponse<string>>, ITeamRequest
 {
+    public TeamScope GetTeamScope() => new(TeamToken, BoardToken);
+
     public const int NameMaxLength = 100;        // = Boards.Name NVARCHAR(100)
     public const int ColumnNameMaxLength = 50;   // = BoardColumns.Name NVARCHAR(50)
 }

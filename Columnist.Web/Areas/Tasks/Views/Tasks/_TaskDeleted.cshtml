@@ -1,0 +1,7 @@
+@* Tasks/Delete succeeded (HX-Reswap: none): the "Task deleted." toast and, on the board, the deleted card's removal,
+   both out of band (board-dnd.js then updates the column and board counts). *@
+@if (ViewData["DeletedCardKey"] is string key)
+{
+    <article id="kb-card-@key" hx-swap-oob="delete"></article>
+}
+<partial name="_TaskToasts" />

@@ -1,0 +1,6 @@
+@* DeletedTasks/Restore succeeded (HX-Reswap: none): the restored row's removal and the "Task restored." toast, both out of band. *@
+@if (ViewData["RestoredKey"] is string key)
+{
+    <article id="kb-deleted-@key" hx-swap-oob="delete"></article>
+}
+<partial name="~/Areas/Tasks/Views/Tasks/_TaskToasts.cshtml" />

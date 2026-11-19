@@ -7,6 +7,8 @@
     var minLength = (int)ViewData["MinLength"]!;
     var clientOnly = (bool)ViewData["ClientOnly"]!;
     var include = ViewData["Include"] as string;
+    var skeleton = ViewData["Skeleton"] as string;
+    var skeletonLabel = ViewData["SkeletonLabel"] as string;
 }
 @if (clientOnly)
 {
@@ -29,5 +31,7 @@
            hx-trigger="input[target.value.length === 0 || target.value.length >= @minLength] changed delay:300ms, search"
            hx-target="@target"
            hx-select="@target"
-           hx-swap="outerHTML" />
+           hx-swap="outerHTML"
+           data-skeleton="@skeleton"
+           data-skeleton-label="@skeletonLabel" />
 </form>

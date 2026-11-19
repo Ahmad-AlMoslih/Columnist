@@ -76,14 +76,18 @@
                     }
                     else
                     {
-                        <form asp-area="Teams" asp-controller="Teams" asp-action="Switch" method="post">
+                        <form asp-area="Teams" asp-controller="Teams" asp-action="Switch" method="post"
+                              hx-boost="true" hx-target="#kb-page" hx-select="#kb-page" hx-swap="outerHTML show:window:top" hx-push-url="true"
+                              data-skeleton="board" data-skeleton-into="[data-page-main]" data-skeleton-label="Loading board">
                             <input type="hidden" name="token" value="@team.Token" />
                             <button type="submit" class="kb-btn-secondary">Open</button>
                         </form>
                     }
                     @if (team.IsOwner)
                     {
-                        <a class="kb-btn-secondary" asp-area="Teams" asp-controller="Teams" asp-action="Settings" asp-route-token="@team.Token">Settings</a>
+                        <a class="kb-btn-secondary" asp-area="Teams" asp-controller="Teams" asp-action="Settings" asp-route-token="@team.Token"
+                           hx-boost="true" hx-target="#kb-page" hx-select="#kb-page" hx-swap="outerHTML show:window:top"
+                           data-skeleton="team-settings" data-skeleton-into="[data-page-main]" data-skeleton-label="Loading team settings">Settings</a>
                     }
                 </div>
             }

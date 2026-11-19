@@ -8,6 +8,7 @@ using Columnist.Auth.Security.Permissions;
 using Columnist.Auth.Security.Photos;
 using Columnist.Auth.Security.RefreshTokens;
 using Columnist.Auth.Security.Sessions;
+using Columnist.Auth.Security.Teams;
 using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,6 +29,7 @@ public static class DependencyInjection
         services.AddScoped<IUserContext, UserContext>();
         services.AddScoped<IPermissionService, PermissionService>();
         services.AddScoped<IBoardAccessService, BoardAccessService>();
+        services.AddScoped<IUserTeamsService, UserTeamsService>();
         services.AddScoped<ISessionVersionService, SessionVersionService>();
         services.AddScoped<IUserPhotoService, UserPhotoService>();
         return services;

@@ -1,0 +1,5 @@
+@model Columnist.Web.Application.Components.ViewComponents.AccountMenu.AccountMenuViewModel
+<button type="button" class="kb-um-btn" id="kb-um-btn" title="@Model.FullName" aria-label="Account menu" aria-haspopup="menu" aria-expanded="false" data-user-menu-toggle>
+    @await Html.PartialAsync("~/Application/Components/ViewComponents/AccountMenu/_Avatar.cshtml", Model)
+    <svg class="kb-um-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
+</button>

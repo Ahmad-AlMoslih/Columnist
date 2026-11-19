@@ -1,0 +1,12 @@
+@model bool
+@* Loading skeleton: the PageHeader view component (the round back button when Model is true, the title and the subtitle). Used by the page templates in _Skeletons. *@
+<div class="kb-ph">
+    @if (Model)
+    {
+        <span class="kb-skel-block kb-skel-strong kb-skel-circle kb-skel-back"></span>
+    }
+    <div class="kb-ph-text">
+        <div class="kb-ph-title"><span class="kb-skel-block kb-skel-strong kb-skel-text kb-skel-page-title"></span></div>
+        <div class="kb-ph-subtitle"><span class="kb-skel-block kb-skel-text kb-skel-ph-subtitle"></span></div>
+    </div>
+</div>

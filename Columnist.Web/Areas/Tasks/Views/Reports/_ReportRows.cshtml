@@ -1,0 +1,83 @@
+@model Columnist.Tasks.Features.Reports.Shared.Models.ReportCardModel
+@* A Report card's list. ViewData: "ReportBoard" = the board token (for the task popup); "ReportRowsAll" = true: every
+   row (Reports/Card, for "View all"), the rows past the first 5 carrying rp-row-more; else only the first 5 (the page). *@
+@{
+    const int visible = 5;
+    var boardToken = (string)ViewData["ReportBoard"]!;
+    var all = ViewData["ReportRowsAll"] is true;
+    var take = all ? int.MaxValue : visible;
+    var index = 0;
+    string More() => index++ >= visible ? " rp-row-more" : "";
+    string ChipStyle(Columnist.Tasks.Features.Reports.Shared.Models.ReportTone? chipTone) =>
+        chipTone is null ? "" : $"background:{chipTone.Tint};color:{chipTone.Color}";
+}
+
+<ul class="rp-rows" data-report-rows="@(all ? "all" : "first")">
+    @foreach (var row in Model.Tasks.Take(take))
+    {
+        <li class="rp-row@(More())">
+            <a class="rp-row-link rp-row-task" asp-area="Tasks" asp-controller="Tasks" asp-action="Details" asp-route-token="@row.Token" asp-route-boardToken="@boardToken"
+               hx-get="@Url.Action("Details", "Tasks", new { area = "Tasks", token = row.Token, boardToken })" hx-target="#kb-task-modal-body" hx-swap="innerHTML"
+               data-skeleton="task-view" data-skeleton-label="Loading task">
+                <span class="rp-row-top">
+                    <span class="rp-row-title">@row.Title</span>
+                    @if (row.Assignees.Count > 0)
+                    {
+                        <span class="kb-card-avatars" title="@string.Join(", ", row.Assignees.Select(a => a.FullName))">
+                            @foreach (var assignee in row.Assignees.Take(3))
+                            {
+                                @Html.AvatarCircle(assignee.FullName, assignee.Initials, noAccess: !assignee.HasAccess, photoUrl: assignee.PhotoUrl)
+                            }
+                            @if (row.Assignees.Count > 3)
+                            {
+                                <span class="kb-avatar rp-avatar-more">+@(row.Assignees.Count - 3)</span>
+                            }
+                        </span>
+                    }
+                </span>
+                <span class="rp-chips">
+                    <span class="rp-chip" style="@(row.ColumnColor is null ? "" : $"background:{row.ColumnColor}")">@row.ColumnName</span>
+                    @if (row.DueText is not null)
+                    {
+                        <span class="rp-chip" style="@ChipStyle(row.DueTone)">@row.DueText</span>
+                    }
+                    @if (row.ChecklistTotal > 0)
+                    {
+                        <span class="rp-chip" title="Checklist items done">
+                            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"></path><path d="M20 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+                            @row.ChecklistDone/@row.ChecklistTotal
+                        </span>
+                    }
+                    @if (row.ExtraChip is not null)
+                    {
+                        <span class="rp-chip" style="@ChipStyle(row.ExtraTone)">@row.ExtraChip</span>
+                    }
+                </span>
+                @if (row.Detail is not null)
+                {
+                    <span class="rp-detail">@row.Detail</span>
+                }
+                @if (row.Progress is { } progress)
+                {
+                    <span class="rp-progress">
+                        <span class="rp-progress-bar"><span class="rp-progress-fill@(progress >= 100 ? " rp-progress-full" : "")" style="width:@(progress)%"></span></span>
+                        <span class="rp-progress-text">@(progress)%</span>
+                    </span>
+                }
+            </a>
+        </li>
+    }
+    @foreach (var personRow in Model.People.Take(Math.Max(0, take - Model.Tasks.Count)))
+    {
+        <li class="rp-row@(More())">
+            <div class="rp-row-link rp-activity rp-row-static">
+                @Html.AvatarCircle(personRow.Person.FullName, personRow.Person.Initials, noAccess: !personRow.Person.HasAccess, photoUrl: personRow.Person.PhotoUrl)
+                <span class="rp-row-main">
+                    <span class="rp-row-title">@personRow.Person.FullName</span>
+                    <span class="rp-detail">@personRow.Breakdown</span>
+                </span>
+                <span class="rp-chip" style="background:var(--rp-tint);color:var(--rp-color)">@personRow.Changes @(personRow.Changes == 1 ? "change" : "changes")</span>
+            </div>
+        </li>
+    }
+</ul>

@@ -77,6 +77,16 @@ public class BoardsController : Controller
         return RedirectToAction("Index", "Tasks", new { area = "Tasks" });
     }
 
+    // Board page → "Add another column": the popup's status options (add-column.js loads them when it first opens).
+    [HttpGet]
+    public async Task<IActionResult> ColumnStatuses(string boardToken, CancellationToken ct)
+    {
+        var settings = await _mediator.Send(new GetBoardSettingsQuery(boardToken, null, null), ct);
+        if (!settings.IsSuccess)
+            return StatusCode(settings.StatusCode);
+        return PartialView("_ColumnStatusOptions", settings.Data!.Statuses);
+    }
+
     // Board page → "Add another column": appends one column and saves the board with its full column list.
     [HttpPost]
     [ValidateAntiForgeryToken]

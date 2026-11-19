@@ -1,0 +1,21 @@
+@model Columnist.Tasks.Features.Reports.Shared.Models.ReportCardModel
+@* A Dashboard card: the icon, the title and note, the count and "View all". ViewData: "ReportBoard" = the board token.
+   The card has no rows: "View all" (dashboard.js) loads them into the popup from data-dash-url (Reports/DashboardCard). *@
+@{
+    var boardToken = (string)ViewData["ReportBoard"]!;
+    var tone = Model.Tone;
+}
+
+<article class="db-card" style="--rp-color:@tone.Color;--rp-tint:@tone.Tint" data-dash-card="@Model.Key" data-dash-title="@Model.Label"
+         data-dash-activity="@(Model.Key == "activity" ? "true" : null)"
+         data-dash-url="@Url.Action("DashboardCard", "Reports", new { area = "Tasks", board = boardToken, card = Model.Key })">
+    <div class="db-card-main">
+        <span class="db-icon" data-dash-icon><partial name="_ReportIcon" model="Model.Key" /></span>
+        <div class="db-card-text">
+            <h2 class="db-title">@Model.Label</h2>
+            <p class="db-note">@Model.Note</p>
+        </div>
+        <span class="db-count">@Model.Count</span>
+    </div>
+    <button type="button" class="db-view-all" data-dash-open aria-haspopup="dialog">View all</button>
+</article>

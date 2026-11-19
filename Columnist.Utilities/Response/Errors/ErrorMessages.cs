@@ -27,6 +27,8 @@ public static class ErrorMessages
     public const string DueDateInPast = "Due date can't be in the past.";
     public const string SaveFailed = "The task couldn't be saved. Check the column and try again.";
     public const string TaskChangedByOther = "This task was changed by someone else. Reload it to see the latest version.";
+    public const string ChooseImages = "Choose at least one image.";
+    public const string ImageNotFound = "That image was already removed.";
     public const string CommentNotFound = "Comment not found.";
     public const string CommentRequired = "Please write a comment.";
     public const string CommentTooLong = "Comment can't be longer than {MaxLength} characters.";   // {MaxLength} = FluentValidation placeholder
@@ -37,14 +39,18 @@ public static class ErrorMessages
     public const string ChecklistItemRequired = "Please enter the item text.";
     public const string ChecklistItemTooLong = "Item text can't be longer than {MaxLength} characters.";
 
-    public const string UsernameRequired = "Please enter your username.";
+    public const string EmailRequired = "Please enter your email.";
     public const string PasswordRequired = "Please enter your password.";
-    public const string InvalidCredentials = "Wrong username or password.";
+    public const string InvalidCredentials = "Wrong email or password.";
     public const string ResetLinkExpired = "This link has expired.";
 
     // Profile
     public const string FullNameRequired = "Please enter your full name.";
     public const string FullNameTooLong = "Full name can't be longer than {MaxLength} characters.";   // {MaxLength} = FluentValidation placeholder
+    public const string UsernameRequired = "Please enter a username.";
+    public const string UsernameLength = "Username must be {MinLength}–{MaxLength} characters.";   // FluentValidation placeholders
+    public const string UsernameInvalidCharacters = "Username can only contain letters, numbers, . _ and -.";
+    public const string UsernameTaken = "That username is taken.";
     public const string PhotoRequired = "Please choose a photo.";
     public const string PhotoTypeNotAllowed = "Please choose a JPG or PNG photo.";
     public const string PhotoTooLarge = "The photo can't be larger than 2 MB.";

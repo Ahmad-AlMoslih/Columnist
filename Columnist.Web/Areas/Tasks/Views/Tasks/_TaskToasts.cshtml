@@ -1,0 +1,23 @@
+@* The page's toast region (#kb-toasts), returned with the task view's saves for hx-select-oob (toast.js shows them).
+   ViewData["ToastsOob"] = true: marked hx-swap-oob, for a response that swaps nothing else (the board's drag and drop). *@
+<div id="kb-toasts" hx-swap-oob="@(ViewData["ToastsOob"] is true ? "true" : null)">
+    @if (TempData["Message"] is not null || TempData["Error"] is not null)
+    {
+        <div class="kb-toast-stack">
+            @if (TempData["Message"] is string success)
+            {
+                <div class="kb-toast kb-toast-success" data-toast-type="success" role="status" aria-live="polite">
+                    <span class="kb-toast-text">@success</span>
+                    <button type="button" class="kb-toast-close" aria-label="Close">&times;</button>
+                </div>
+            }
+            @if (TempData["Error"] is string error)
+            {
+                <div class="kb-toast kb-toast-error" data-toast-type="error" role="alert">
+                    <span class="kb-toast-text">@error</span>
+                    <button type="button" class="kb-toast-close" aria-label="Close">&times;</button>
+                </div>
+            }
+        </div>
+    }
+</div>

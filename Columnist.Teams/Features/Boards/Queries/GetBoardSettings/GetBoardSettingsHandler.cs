@@ -1,3 +1,5 @@
+using Columnist.Auth.Authorization;
+using Columnist.Auth.Security.Boards;
 using Columnist.Auth.Security.CurrentUser;
 using Columnist.Contracts.Dtos;
 using Columnist.DataAccess;
@@ -14,11 +16,13 @@ public sealed class GetBoardSettingsHandler : IRequestHandler<GetBoardSettingsQu
 {
     private readonly IDbExecutor _db;
     private readonly IUserContext _userContext;
+    private readonly IBoardAccessService _boards;
 
-    public GetBoardSettingsHandler(IDbExecutor db, IUserContext userContext)
+    public GetBoardSettingsHandler(IDbExecutor db, IUserContext userContext, IBoardAccessService boards)
     {
         _db = db;
         _userContext = userContext;
+        _boards = boards;
     }
 
     public async Task<ApiResponse<GetBoardSettingsModel>> Handle(GetBoardSettingsQuery request, CancellationToken cancellationToken)
@@ -57,20 +61,16 @@ public sealed class GetBoardSettingsHandler : IRequestHandler<GetBoardSettingsQu
                         TaskCount = r.TaskCount
                     })
                     .ToList(),
-                Statuses = statuses
+                Statuses = statuses,
+                CanSeeDeleted = await _boards.HasPermissionAsync(boardId.Value, Permission.DeletedTasksRead, cancellationToken),
+                CanSeeLogs = await _boards.HasPermissionAsync(boardId.Value, Permission.LogsRead, cancellationToken),
+                CanManage = await _boards.IsOwnerAsync(boardId.Value, cancellationToken)
             });
         }
 
         var teamId = request.TeamToken?.Decrypt<int>();
         if (teamId is null)
             return ApiResponse<GetBoardSettingsModel>.NotFound(ErrorMessages.TeamNotFound);
-
-        var userParameters = new DynamicParameters();
-        userParameters.Add("@UserId", _userContext.UserId);
-
-        var teams = await _db.QueryAsync<TeamDto>("dbo.GetUserTeams", userParameters, cancellationToken);
-        if (!teams.Any(t => t.Id == teamId.Value && t.IsOwner))
-            return ApiResponse<GetBoardSettingsModel>.Forbidden(ErrorMessages.Forbidden);
 
         return ApiResponse<GetBoardSettingsModel>.Success(new GetBoardSettingsModel
         {

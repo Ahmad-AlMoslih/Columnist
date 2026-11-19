@@ -1,0 +1,8 @@
+@{
+    ViewData["BoardShell"] = true;
+}
+<div class="kb-skel" id="kb-board-shell" aria-busy="true" aria-label="Loading board"
+     hx-get="@(Context.Request.PathBase + Context.Request.Path + Context.Request.QueryString)" hx-trigger="load"
+     hx-target="#kb-page" hx-select="#kb-page" hx-swap="outerHTML">
+    <partial name="Skeletons/_SkeletonBoard" model="false" />
+</div>

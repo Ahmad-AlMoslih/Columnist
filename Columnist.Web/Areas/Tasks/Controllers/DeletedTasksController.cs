@@ -1,3 +1,4 @@
+using Columnist.Services.Tokens.Extensions;
 using Columnist.Tasks.Features.Tasks.Commands.RestoreTask;
 using Columnist.Tasks.Features.Tasks.Queries.GetDeletedTasks;
 using Columnist.Teams.Features.Boards.Queries.GetMyBoards;
@@ -36,7 +37,6 @@ public class DeletedTasksController : Controller
         }
 
         var teams = await _currentTeams.GetAsync(ct);
-        ViewData["IsTeamOwner"] = teams.Data?.Teams.FirstOrDefault(t => t.IsCurrent)?.IsOwner == true;
 
         // Board name for the page subtitle.
         if (teams.Data?.CurrentTeamToken is { } teamToken)
@@ -50,15 +50,19 @@ public class DeletedTasksController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Restore(string token, string? boardToken, CancellationToken ct)
+    public async Task<IActionResult> Restore(string token, CancellationToken ct)
     {
         var response = await _mediator.Send(new RestoreTaskCommand(token), ct);
-
         if (response.IsSuccess)
+        {
             TempData["Message"] = "Task restored.";
-        else
-            TempData["Error"] = response.Errors[0].Message;
+            ViewData["ToastsOob"] = true;
+            ViewData["RestoredKey"] = token.Decrypt<int>()?.ToStableKey("task");
+            Response.Headers["HX-Reswap"] = "none";
+            return PartialView("_TaskRestored");
+        }
 
-        return RedirectToAction(nameof(Index), new { boardToken });
+        TempData["Error"] = response.Errors[0].Message;
+        return PartialView("~/Areas/Tasks/Views/Tasks/_TaskToasts.cshtml");
     }
 }

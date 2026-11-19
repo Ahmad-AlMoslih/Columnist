@@ -1,0 +1,36 @@
+@model Columnist.Tasks.Features.Reports.Shared.Models.ReportCardModel
+@* A Report card. ViewData: "ReportBoard" = the board token (for the task popup). Only the first 5 rows are rendered
+   (_ReportRows); "View all" (reports.js) loads the full list (Reports/Card), which scrolls at the height of those 5 rows. *@
+@{
+    const int visible = 5;
+    var tone = Model.Tone;
+}
+
+<article class="rp-card" data-report-card="@Model.Key:@Model.Label" style="--rp-color:@tone.Color;--rp-tint:@tone.Tint">
+    <header class="rp-card-head">
+        @if (Model.Person is { } person)
+        {
+            <span class="rp-tile rp-tile-person">@Html.AvatarCircle(person.FullName, person.Initials, noAccess: !person.HasAccess, photoUrl: person.PhotoUrl)</span>
+        }
+        else
+        {
+            <span class="rp-tile" aria-hidden="true">
+                <partial name="_ReportIcon" model="Model.Key" />
+            </span>
+        }
+        <div class="rp-card-text">
+            <h2 class="rp-label">@Model.Label</h2>
+            <p class="rp-note">@Model.Note</p>
+        </div>
+        <span class="rp-number">@Model.Count</span>
+    </header>
+
+    @if (Model.RowCount > 0)
+    {
+        <partial name="_ReportRows" model="Model" />
+        @if (Model.RowCount > visible)
+        {
+            <button type="button" class="rp-more" data-report-more data-more-text="View all @Model.RowCount" aria-expanded="false">View all @Model.RowCount</button>
+        }
+    }
+</article>

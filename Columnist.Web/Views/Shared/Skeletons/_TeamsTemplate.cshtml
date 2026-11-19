@@ -1,0 +1,40 @@
+@* Teams page (Teams/Index): the welcome heading, the teams list and the Create team / Join team / Create a board cards. *@
+<template data-skeleton-template="teams">
+    <div class="kb-skel lb-page">
+        <div>
+            <h1 class="lb-title"><span class="kb-skel-block kb-skel-strong kb-skel-text kb-skel-page-title"></span></h1>
+            <p class="lb-lead"><span class="kb-skel-block kb-skel-text kb-skel-ph-subtitle"></span></p>
+        </div>
+        <section class="lb-teams">
+            <h2 class="lb-h"><span class="kb-skel-block kb-skel-strong kb-skel-text kb-skel-name"></span></h2>
+            <div class="lb-team-row" data-skeleton-repeat="2">
+                <span class="lb-team-name"><span class="kb-skel-block kb-skel-text kb-skel-name"></span></span>
+                <span class="kb-skel-block kb-skel-pill kb-skel-pill-md"></span>
+                <span class="kb-skel-block kb-skel-btn-lg"></span>
+            </div>
+        </section>
+        <div class="lb-grid">
+            @* Three cards: the third has a second field, the second a note under its button ("-" = left out). *@
+            <div class="lb-card" data-skeleton-repeat="3">
+                <span class="kb-skel-block kb-skel-strong kb-skel-icon-lg"></span>
+                <h2 class="lb-h"><span class="kb-skel-block kb-skel-strong kb-skel-text kb-skel-name"></span></h2>
+                <p class="lb-p">
+                    <span class="kb-skel-block kb-skel-text kb-skel-w-90"></span>
+                    <span class="kb-skel-block kb-skel-text kb-skel-w-65"></span>
+                </p>
+                <div class="kb-skel-form">
+                    <div class="lb-label">
+                        <span class="kb-skel-block kb-skel-text kb-skel-label"></span>
+                        <span class="kb-skel-block kb-skel-input kb-skel-h-44"></span>
+                    </div>
+                    <div class="lb-label" data-skeleton-cycle="-|-|">
+                        <span class="kb-skel-block kb-skel-text kb-skel-label"></span>
+                        <span class="kb-skel-block kb-skel-input kb-skel-h-44"></span>
+                    </div>
+                    <span class="kb-skel-block kb-skel-strong kb-skel-input kb-skel-h-44"></span>
+                </div>
+                <p class="lb-small" data-skeleton-cycle="-||-"><span class="kb-skel-block kb-skel-text kb-skel-w-90"></span></p>
+            </div>
+        </div>
+    </div>
+</template>

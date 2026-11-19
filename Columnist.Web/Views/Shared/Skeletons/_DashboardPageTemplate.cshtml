@@ -1,0 +1,19 @@
+@* Board dashboard page (Reports/Dashboard): the header and a grid of Dashboard cards (icon, title and note, count, "View all"). *@
+<template data-skeleton-template="dashboard-page">
+    <section class="kb-skel kb-deleted">
+        <partial name="Skeletons/_SkeletonPageHeader" model="true" />
+        <div class="db-grid">
+            <div class="db-card kb-skel-card" data-skeleton-repeat="8">
+                <div class="db-card-main">
+                    <span class="kb-skel-block kb-skel-strong kb-skel-circle db-skel-icon"></span>
+                    <div class="db-card-text kb-skel-lines">
+                        <span class="kb-skel-block kb-skel-strong kb-skel-label"></span>
+                        <span class="kb-skel-block kb-skel-w-70"></span>
+                    </div>
+                    <span class="kb-skel-block kb-skel-strong db-skel-count"></span>
+                </div>
+                <span class="kb-skel-block db-skel-view"></span>
+            </div>
+        </div>
+    </section>
+</template>

@@ -27,7 +27,7 @@ public sealed class LoginHandler : IRequestHandler<LoginCommand, ApiResponse<Log
 
     public async Task<ApiResponse<LoginResultDto>> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
-        var user = await GetUserByUsernameAsync(request.Username, cancellationToken);
+        var user = await GetUserByEmailAsync(request.Email.Trim(), cancellationToken);
         if (user is null || !_passwordHasher.Verify(request.Password, user.PasswordHash))
             return ApiResponse<LoginResultDto>.Unauthorized(ErrorMessages.InvalidCredentials);
 
@@ -47,11 +47,12 @@ public sealed class LoginHandler : IRequestHandler<LoginCommand, ApiResponse<Log
         });
     }
 
-    private async Task<UserCredentialsDto?> GetUserByUsernameAsync(string username, CancellationToken ct)
+    // Matches the email ignoring case (dbo.GetUserByEmail).
+    private async Task<UserCredentialsDto?> GetUserByEmailAsync(string email, CancellationToken ct)
     {
         var parameters = new DynamicParameters();
-        parameters.Add("@Username", username);
-        return await _db.QuerySingleOrDefaultAsync<UserCredentialsDto>("dbo.GetUserByUsername", parameters, ct);
+        parameters.Add("@Email", email);
+        return await _db.QuerySingleOrDefaultAsync<UserCredentialsDto>("dbo.GetUserByEmail", parameters, ct);
     }
 
     private async Task<bool> SaveRefreshTokenAsync(int userId, string tokenHash, DateTime expiresAt, CancellationToken ct)

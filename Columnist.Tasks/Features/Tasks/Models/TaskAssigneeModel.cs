@@ -6,6 +6,7 @@ namespace Columnist.Tasks.Features.Tasks.Models;
 public sealed record TaskAssigneeModel
 {
     public string Token { get; init; } = "";
+    public string Key { get; init; } = "";   // stable per user (ToStableKey); set by the task view only
     public string FullName { get; init; } = "";
     public string Initials { get; init; } = "";
     public string? PhotoUrl { get; init; }   // profile photo; null = show the initials

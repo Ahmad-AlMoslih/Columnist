@@ -1,0 +1,42 @@
+@model Columnist.Web.Models.BoardPageTabsViewModel
+@using Columnist.Web.Models
+@* Board · Dashboard · Report, in their own row above the page title (#kb-page-tabs on the board, the Dashboard and the
+   Report). Each swaps only #kb-tab-page (the content below the row) and the top bar's actions, pushing the URL; the row
+   stays. The active tab is rendered here for the page shown; after any swap or Back / Forward page-tabs.js sets it again
+   from the page shown (#kb-tab-page's data-page). The page's skeleton shows after 200 ms (skeleton.js). The Board tab goes
+   back with the board's last search and filter. *@
+@{
+    var tabs = new[]
+    {
+        (Key: BoardPageTabsViewModel.Board, Label: "Board", Url: Url.Action("Index", "Tasks", new { area = "Tasks", boardToken = Model.BoardToken })!, Skeleton: "board", Loading: "Loading board"),
+        (Key: BoardPageTabsViewModel.Dashboard, Label: "Dashboard", Url: Url.Action("Dashboard", "Reports", new { area = "Tasks", board = Model.BoardToken })!, Skeleton: "dashboard-page", Loading: "Loading dashboard"),
+        (Key: BoardPageTabsViewModel.Report, Label: "Report", Url: Url.Action("Index", "Reports", new { area = "Tasks", board = Model.BoardToken })!, Skeleton: "report-page", Loading: "Loading report")
+    };
+}
+
+<nav class="kb-seg" aria-label="Board views">
+    @foreach (var tab in tabs)
+    {
+        var active = tab.Key == Model.Active;
+        <a class="kb-seg-btn@(active ? " active" : "")" href="@tab.Url" aria-current="@(active ? "page" : null)"
+           hx-boost="true" hx-target="#kb-tab-page" hx-select="#kb-tab-page" hx-select-oob="#kb-topbar-actions" hx-swap="outerHTML show:window:top"
+           data-skeleton-into="#kb-tab-page" data-skeleton="@tab.Skeleton" data-skeleton-label="@tab.Loading"
+           data-page-tab="@tab.Key" data-board-token="@(tab.Key == BoardPageTabsViewModel.Board ? Model.BoardToken : null)">
+            <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                @switch (tab.Key)
+                {
+                    case BoardPageTabsViewModel.Board:
+                        <rect x="3" y="3" width="7" height="18" rx="1.5"></rect><rect x="14" y="3" width="7" height="12" rx="1.5"></rect>
+                        break;
+                    case BoardPageTabsViewModel.Dashboard:
+                        <rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect>
+                        break;
+                    default:
+                        <path d="M3 3v18h18"></path><path d="M8 17v-5"></path><path d="M13 17V8"></path><path d="M18 17v-8"></path>
+                        break;
+                }
+            </svg>
+            @tab.Label
+        </a>
+    }
+</nav>

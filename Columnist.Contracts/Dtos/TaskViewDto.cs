@@ -14,5 +14,8 @@ namespace Columnist.Contracts.Dtos
         public string? CreatedByName { get; init; }
         public DateTime? UpdatedAt { get; init; }
         public string? UpdatedByName { get; init; }
+        public int ColumnId { get; init; }
+        public int BoardId { get; init; }
+        public byte[]? RowVersion { get; init; }
     }
 }

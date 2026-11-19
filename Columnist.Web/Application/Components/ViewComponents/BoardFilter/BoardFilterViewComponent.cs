@@ -10,7 +10,7 @@ public sealed class BoardFilterViewComponent : ViewComponent
 {
     private const string ViewPath = "~/Application/Components/ViewComponents/BoardFilter/Default.cshtml";
 
-    public IViewComponentResult Invoke(BoardFilterModel filter, string url, string searchForm)
+    public IViewComponentResult Invoke(BoardFilterModel filter, string url, string? searchForm)
     {
         ViewData["Url"] = url;
         ViewData["SearchForm"] = searchForm;

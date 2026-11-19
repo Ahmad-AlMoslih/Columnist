@@ -81,6 +81,7 @@ public static class TaskCardHelpers
             photo.AddCssClass("kb-photo");
             photo.Attributes["src"] = photoUrl;
             photo.Attributes["alt"] = "";
+            photo.Attributes["loading"] = "lazy";   // only when it is on screen
             avatar.InnerHtml.AppendHtml(photo);
         }
         else

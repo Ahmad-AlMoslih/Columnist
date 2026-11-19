@@ -1,0 +1,74 @@
+@{
+    const string closeIcon = "<svg aria-hidden=\"true\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\"><path d=\"M6 6l12 12M18 6L6 18\"></path></svg>";
+}
+
+@* Task popup: the task view (_TaskView), with its side panel. *@
+<template data-skeleton-template="task-view">
+    <div class="kb-skel kb-view">
+        <header class="kb-view-head">
+            <div class="kb-view-head-text">
+                <div class="kb-view-meta">
+                    <span class="kb-skel-block kb-skel-strong kb-skel-pill kb-skel-chip"></span>
+                    <span class="kb-skel-block kb-skel-pill kb-skel-chip"></span>
+                    <span class="kb-skel-block kb-skel-strong kb-skel-circle kb-skel-avatar-sm"></span>
+                    <span class="kb-skel-block kb-skel-strong kb-skel-circle kb-skel-avatar-sm"></span>
+                </div>
+                <span class="kb-skel-block kb-skel-strong kb-skel-title kb-skel-w-70"></span>
+            </div>
+            <span class="kb-skel-block kb-skel-strong kb-skel-btn"></span>
+            <button type="button" class="kb-view-close" data-bs-dismiss="modal" aria-label="Close">@Html.Raw(closeIcon)</button>
+        </header>
+        <div class="kb-view-body">
+            <div class="kb-view-main">
+                <section class="kb-view-section">
+                    <span class="kb-skel-block kb-skel-label"></span>
+                    <div class="kb-skel-thumbs">
+                        <span class="kb-skel-block kb-skel-thumb" data-skeleton-repeat="3"></span>
+                    </div>
+                </section>
+                <section class="kb-view-section">
+                    <span class="kb-skel-block kb-skel-label"></span>
+                    <span class="kb-skel-block kb-skel-line kb-skel-w-90"></span>
+                    <span class="kb-skel-block kb-skel-line kb-skel-w-80"></span>
+                    <span class="kb-skel-block kb-skel-line kb-skel-w-55"></span>
+                </section>
+                <span class="kb-skel-block kb-skel-strong kb-skel-bar"></span>
+                <section class="kb-comments">
+                    <span class="kb-skel-block kb-skel-label"></span>
+                    <partial name="Skeletons/_SkeletonCommentRows" />
+                </section>
+            </div>
+            <aside class="kb-view-side">
+                <div class="kb-view-field">
+                    <span class="kb-skel-block kb-skel-label"></span>
+                    <div class="kb-skel-person">
+                        <span class="kb-skel-block kb-skel-strong kb-skel-circle kb-skel-avatar-sm"></span>
+                        <span class="kb-skel-block kb-skel-line kb-skel-w-65"></span>
+                    </div>
+                    <div class="kb-skel-person">
+                        <span class="kb-skel-block kb-skel-strong kb-skel-circle kb-skel-avatar-sm"></span>
+                        <span class="kb-skel-block kb-skel-line kb-skel-w-55"></span>
+                    </div>
+                </div>
+                <div class="kb-view-field">
+                    <span class="kb-skel-block kb-skel-label"></span>
+                    <span class="kb-skel-block kb-skel-pill kb-skel-chip"></span>
+                </div>
+                <div class="kb-view-field">
+                    <span class="kb-skel-block kb-skel-label"></span>
+                    <span class="kb-skel-block kb-skel-line kb-skel-w-65"></span>
+                </div>
+                <div class="kb-view-audit">
+                    <div class="kb-skel-lines">
+                        <span class="kb-skel-block kb-skel-line kb-skel-w-80"></span>
+                        <span class="kb-skel-block kb-skel-line kb-skel-w-55"></span>
+                    </div>
+                    <div class="kb-skel-lines">
+                        <span class="kb-skel-block kb-skel-line kb-skel-w-80"></span>
+                        <span class="kb-skel-block kb-skel-line kb-skel-w-55"></span>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+</template>

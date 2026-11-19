@@ -1,4 +1,4 @@
-// Top bar account menu: opens on click, closes on outside click or Escape.
+// Top bar account menu: opens on click, closes on outside click, on Escape or when one of its items starts a request.
 (function () {
     function close(toggle) {
         var menu = toggle.parentElement.querySelector('[data-user-menu]');
@@ -27,5 +27,11 @@
 
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') closeAll(null);
+    });
+
+    document.addEventListener('htmx:beforeRequest', function (evt) {
+        if (evt.defaultPrevented) return;
+        var elt = evt.detail.elt;
+        if (elt && elt.closest && elt.closest('[data-user-menu]')) closeAll(null);
     });
 })();

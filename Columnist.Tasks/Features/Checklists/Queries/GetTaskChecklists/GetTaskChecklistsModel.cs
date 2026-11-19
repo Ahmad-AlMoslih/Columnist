@@ -7,4 +7,5 @@ public sealed record GetTaskChecklistsModel
     public string TaskToken { get; init; } = "";
     public string TaskKey { get; init; } = "";   // stable per task: remembers the checklists' open/closed state in the browser
     public IReadOnlyList<ChecklistModel> Checklists { get; init; } = [];
+    public bool CanWrite { get; init; }   // TasksWrite on the task's board
 }

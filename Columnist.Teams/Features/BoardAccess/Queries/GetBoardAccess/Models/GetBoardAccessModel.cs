@@ -8,4 +8,14 @@ public sealed record GetBoardAccessModel
     public IReadOnlyList<BoardMemberModel> Members { get; init; } = [];
     public IReadOnlyList<BoardCandidateModel> Candidates { get; init; } = [];
     public IReadOnlyList<BoardPermissionModel> Permissions { get; init; } = [];
+
+    // The Super Admin's row (the signed-in user: only the owner can open this page).
+    public string OwnerName { get; init; } = "";
+    public string OwnerInitials { get; init; } = "";
+    public string? OwnerPhotoUrl { get; init; }
+
+    // The board menu's links.
+    public bool CanSeeDeleted { get; init; }
+    public bool CanSeeLogs { get; init; }
+    public bool CanManage { get; init; }
 }

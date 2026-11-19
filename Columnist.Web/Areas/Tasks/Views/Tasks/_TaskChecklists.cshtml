@@ -1,14 +1,10 @@
 @model Columnist.Tasks.Features.Checklists.Queries.GetTaskChecklists.GetTaskChecklistsModel
-@using Columnist.Auth.Authorization
 @using Columnist.Tasks.Features.Checklists.Commands.SaveChecklist
 @using Columnist.Tasks.Features.Checklists.Commands.SaveChecklistItem
-@inject Columnist.Auth.Security.Boards.IBoardAccessService BoardAccess
 @{
-    var canWrite = await BoardAccess.HasPermissionAsync(new BoardScope(TaskToken: Model.TaskToken), Permission.TasksWrite);
+    var canWrite = Model.CanWrite;
 }
 
-@* Live refresh (live-board.js) morphs this region; every POST below returns it again (TasksController.Checklists).
-   Rendered with the section and every checklist collapsed; checklists.js applies the state remembered for this task (data-cl-task, data-cl-key). *@
 <div id="kb-task-checklists" class="kb-checklists" hx-ext="morph" data-task-checklists-url="@Url.Action("Checklists", new { token = Model.TaskToken })" data-cl-task="@Model.TaskKey">
     @if (Model.Checklists.Count > 0)
     {

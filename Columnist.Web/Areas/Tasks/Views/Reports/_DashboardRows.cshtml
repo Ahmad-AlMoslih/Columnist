@@ -1,0 +1,69 @@
+@model Columnist.Tasks.Features.Reports.Shared.Models.ReportCardModel
+@* A Dashboard card's rows, for its "View all" popup (Reports/DashboardCard, into [data-dash-modal-list]).
+   ViewData: "ReportBoard" = the board token (for the task popup). *@
+@{
+    var boardToken = (string)ViewData["ReportBoard"]!;
+    string ChipStyle(Columnist.Tasks.Features.Reports.Shared.Models.ReportTone? chipTone) =>
+        chipTone is null ? "" : $"background:{chipTone.Tint};color:{chipTone.Color}";
+}
+
+@foreach (var row in Model.Tasks)
+{
+    <li class="rp-row">
+        <a class="rp-row-link rp-row-task" asp-area="Tasks" asp-controller="Tasks" asp-action="Details" asp-route-token="@row.Token" asp-route-boardToken="@boardToken"
+           hx-get="@Url.Action("Details", "Tasks", new { area = "Tasks", token = row.Token, boardToken })" hx-target="#kb-task-modal-body" hx-swap="innerHTML"
+           data-skeleton="task-view" data-skeleton-label="Loading task">
+            <span class="rp-row-top">
+                <span class="rp-row-title">@row.Title</span>
+                @if (row.Assignees.Count > 0)
+                {
+                    <span class="kb-card-avatars" title="@string.Join(", ", row.Assignees.Select(a => a.FullName))">
+                        @foreach (var assignee in row.Assignees.Take(3))
+                        {
+                            @Html.AvatarCircle(assignee.FullName, assignee.Initials, noAccess: !assignee.HasAccess, photoUrl: assignee.PhotoUrl)
+                        }
+                        @if (row.Assignees.Count > 3)
+                        {
+                            <span class="kb-avatar rp-avatar-more">+@(row.Assignees.Count - 3)</span>
+                        }
+                    </span>
+                }
+            </span>
+            <span class="rp-chips">
+                <span class="rp-chip" style="@(row.ColumnColor is null ? "" : $"background:{row.ColumnColor}")">@row.ColumnName</span>
+                @if (row.DueText is not null)
+                {
+                    <span class="rp-chip" style="@ChipStyle(row.DueTone)">@row.DueText</span>
+                }
+                @if (row.ChecklistTotal > 0)
+                {
+                    <span class="rp-chip" title="Checklist items done">
+                        <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"></path><path d="M20 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+                        @row.ChecklistDone/@row.ChecklistTotal
+                    </span>
+                }
+            </span>
+        </a>
+    </li>
+}
+@foreach (var entry in Model.Activity)
+{
+    <li class="rp-row">
+        @if (entry.TaskToken is not null)
+        {
+            <a class="rp-row-link rp-activity" asp-area="Tasks" asp-controller="Tasks" asp-action="Details" asp-route-token="@entry.TaskToken" asp-route-boardToken="@boardToken"
+               hx-get="@Url.Action("Details", "Tasks", new { area = "Tasks", token = entry.TaskToken, boardToken })" hx-target="#kb-task-modal-body" hx-swap="innerHTML"
+               data-skeleton="task-view" data-skeleton-label="Loading task">
+                @Html.AvatarCircle(entry.Actor.FullName, entry.Actor.Initials, photoUrl: entry.Actor.PhotoUrl)
+                <span class="rp-activity-text"><strong>@entry.Actor.FullName</strong> @entry.Text <span class="rp-time">· @entry.Time</span></span>
+            </a>
+        }
+        else
+        {
+            <div class="rp-row-link rp-activity rp-row-static">
+                @Html.AvatarCircle(entry.Actor.FullName, entry.Actor.Initials, photoUrl: entry.Actor.PhotoUrl)
+                <span class="rp-activity-text"><strong>@entry.Actor.FullName</strong> @entry.Text <span class="rp-time">· @entry.Time</span></span>
+            </div>
+        }
+    </li>
+}

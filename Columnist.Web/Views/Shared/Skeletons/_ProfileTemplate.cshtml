@@ -1,0 +1,34 @@
+@{
+    const string closeIcon = "<svg aria-hidden=\"true\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\"><path d=\"M6 6l12 12M18 6L6 18\"></path></svg>";
+}
+
+@* Profile popup (_Profile): the real title and close button, then the photo, the fields and the password button. *@
+<template data-skeleton-template="profile">
+    <div class="kb-skel pf">
+        <div class="kb-task-form-head">
+            <h2 class="kb-task-form-title" id="kb-profile-title">Profile</h2>
+            <button type="button" class="kb-view-close" data-bs-dismiss="modal" aria-label="Close">@Html.Raw(closeIcon)</button>
+        </div>
+        <div class="pf-photo">
+            <span class="kb-skel-block kb-skel-strong kb-skel-circle kb-skel-photo"></span>
+            <div class="pf-photo-side">
+                <span class="kb-skel-block kb-skel-strong kb-skel-btn"></span>
+                <span class="kb-skel-block kb-skel-line kb-skel-hint"></span>
+            </div>
+        </div>
+        <div class="mb-3 kb-skel-field" data-skeleton-repeat="3">
+            <span class="kb-skel-block kb-skel-label"></span>
+            <span class="kb-skel-block kb-skel-input"></span>
+        </div>
+        <div class="mb-3 kb-skel-field">
+            <span class="kb-skel-block kb-skel-label"></span>
+            <span class="kb-skel-block kb-skel-line kb-skel-w-45"></span>
+        </div>
+        <div class="pf-actions">
+            <span class="kb-skel-block kb-skel-strong kb-skel-btn"></span>
+        </div>
+        <div class="pf-password">
+            <span class="kb-skel-block kb-skel-strong kb-skel-btn"></span>
+        </div>
+    </div>
+</template>

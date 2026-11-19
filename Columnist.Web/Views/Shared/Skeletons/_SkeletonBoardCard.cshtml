@@ -1,0 +1,13 @@
+@model int
+@* Loading skeleton: one board card (two text lines, a chip and an avatar). Used by the board templates in _Skeletons.
+   Model = how many copies skeleton.js makes of it (1 = just this one). *@
+<div class="kb-card kb-skel-card" data-skeleton-repeat="@(Model > 1 ? Model.ToString() : null)">
+    <div class="kb-card-body">
+        <span class="kb-skel-block kb-skel-strong kb-skel-line kb-skel-w-90"></span>
+        <span class="kb-skel-block kb-skel-line kb-skel-w-55"></span>
+        <div class="kb-skel-card-foot">
+            <span class="kb-skel-block kb-skel-pill kb-skel-chip-sm"></span>
+            <span class="kb-skel-block kb-skel-strong kb-skel-circle kb-skel-avatar-sm"></span>
+        </div>
+    </div>
+</div>

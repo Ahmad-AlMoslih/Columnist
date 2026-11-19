@@ -1,0 +1,111 @@
+@model Columnist.Tasks.Features.Reports.Queries.GetBoardReport.Models.GetBoardReportModel
+@using Microsoft.AspNetCore.WebUtilities
+@{
+    ViewData["Title"] = "Report";
+    ViewData["Crumb"] = Model.BoardName;
+    var boardMenu = new Columnist.Web.Models.BoardUserMenuViewModel(Model.BoardToken, Model.CanSeeDeleted, Model.CanSeeLogs, Model.CanManage);
+    var url = Url.Action("Index", "Reports", new { area = "Tasks" })!;
+    var query = new List<KeyValuePair<string, string?>> { new("board", Model.BoardToken) };
+    query.AddRange(Model.Query);
+    var refreshUrl = QueryHelpers.AddQueryString(url, query);
+    var exportUrl = QueryHelpers.AddQueryString(Url.Action("Export", "Reports", new { area = "Tasks" })!, query);
+    var cardUrl = QueryHelpers.AddQueryString(Url.Action("Card", "Reports", new { area = "Tasks" })!, query);
+}
+
+@if (boardMenu.Any)
+{
+    @section UserMenu {
+        <partial name="_BoardUserMenu" model="boardMenu" />
+    }
+}
+
+@* Board · Dashboard · Report (page-tabs.js): outside #kb-tab-page, so switching leaves it in place (a tab gets
+   only #kb-tab-page, _TabLayout). *@
+@if (!Context.Request.IsTabSwap())
+{
+    <div id="kb-page-tabs" class="kb-page-tabs" hidden="@(!(Model.CanSeeReports || Model.CanManage))">
+        @if ((Model.CanSeeReports || Model.CanManage))
+        {
+            <partial name="_BoardPageTabs" model='new Columnist.Web.Models.BoardPageTabsViewModel(Model.BoardToken, Columnist.Web.Models.BoardPageTabsViewModel.Report)' />
+        }
+    </div>
+}
+
+<div id="kb-tab-page" data-page="report">
+<partial name="~/Areas/Tasks/Views/Tasks/_TaskToasts.cshtml" />
+
+<section class="kb-deleted">
+    <div class="rp-head">
+        @await Component.InvokeAsync("PageHeader", new
+        {
+            title = "Report",
+            subtitle = Model.BoardName,
+            backUrl = Url.Action("Index", "Tasks", new { area = "Tasks", boardToken = Model.BoardToken }),
+            backLabel = "Back to board",
+            backSkeleton = "board",
+            backSkeletonLabel = "Loading board"
+        })
+        <a class="kb-btn-primary rp-export" href="@exportUrl" data-report-export download>
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"></path><path d="M7 10l5 5 5-5"></path><path d="M5 21h14"></path></svg>
+            Export CSV
+        </a>
+    </div>
+
+    @* Every change reloads the region with the filter in the URL (reports.js keeps the export link in step).
+       The search applies at 2+ characters, like the board search. *@
+    <form class="rp-filters" method="get" action="@url" data-report-filters
+          hx-get="@url" hx-trigger="change, keyup changed delay:300ms from:[data-report-search]"
+          hx-target="#kb-report-region" hx-select="#kb-report-region" hx-swap="morph:outerHTML" hx-ext="morph" hx-push-url="true">
+        <input type="hidden" name="board" value="@Model.BoardToken" />
+        <div class="rp-filter-row">
+            <input type="search" name="q" value="@Model.Search" class="kb-search-input rp-search" placeholder="Search tasks…" aria-label="Search tasks" maxlength="100" autocomplete="off" data-report-search />
+            <select name="assignee" class="au-select rp-select" aria-label="Assignee">
+                <option value="">Anyone</option>
+                @foreach (var person in Model.Assignees)
+                {
+                    <option value="@person.Token" selected="@person.Selected">@person.Name</option>
+                }
+            </select>
+            <label class="rp-date">
+                <span>From</span>
+                <input type="date" name="from" value="@Model.From" class="form-control" aria-label="Due from" />
+            </label>
+            <label class="rp-date">
+                <span>To</span>
+                <input type="date" name="to" value="@Model.To" class="form-control" aria-label="Due to" />
+            </label>
+        </div>
+        <div class="rp-filter-row">
+            <div class="rp-column-chips" role="group" aria-label="Columns">
+                @foreach (var column in Model.Columns)
+                {
+                    <label class="rp-column-chip">
+                        <input type="checkbox" name="column" value="@column.Token" checked="@column.Selected" />
+                        <span><span class="rp-dot" style="background:@(column.Color ?? "var(--kb-border-strong)")"></span>@column.Name</span>
+                    </label>
+                }
+            </div>
+            <button type="button" class="rp-clear" data-report-clear>Clear filters</button>
+        </div>
+    </form>
+
+    @* Live refresh (live-board.js) morphs this region in place from data-refresh-url. data-card-url = a card's full
+       list with this filter (reports.js adds &card=). *@
+    <div id="kb-report-region" hx-ext="morph" data-board-token="@Model.BoardToken" data-refresh-url="@refreshUrl" data-export-url="@exportUrl" data-card-url="@cardUrl">
+        @foreach (var group in Model.Groups)
+        {
+            <section class="rp-group">
+                <h2 class="rp-group-title">@group.Title</h2>
+                <div class="rp-grid">
+                    @foreach (var card in group.Cards)
+                    {
+                        <partial name="_ReportCard" model="card" view-data='new ViewDataDictionary(ViewData) { ["ReportBoard"] = Model.BoardToken }' />
+                    }
+                </div>
+            </section>
+        }
+    </div>
+</section>
+
+<partial name="_TaskModals" />
+</div>

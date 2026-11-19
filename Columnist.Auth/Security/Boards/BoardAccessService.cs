@@ -11,9 +11,12 @@ public sealed class BoardAccessService : IBoardAccessService
     private readonly IDbExecutor _db;
     private readonly IUserContext _userContext;
 
-    // Per request: each board is read at most once.
+    // Per request: each board, column and task is read at most once.
     private readonly Dictionary<int, bool> _canView = new();
+    private readonly Dictionary<int, bool> _isOwner = new();
     private readonly Dictionary<int, IReadOnlySet<string>> _permissions = new();
+    private readonly Dictionary<int, int?> _boardByColumn = new();
+    private readonly Dictionary<int, int?> _boardByTask = new();
 
     public BoardAccessService(IDbExecutor db, IUserContext userContext)
     {
@@ -40,10 +43,14 @@ public sealed class BoardAccessService : IBoardAccessService
             var columnId = scope.ColumnToken.Decrypt<int>();
             if (columnId is not null)
             {
-                var parameters = new DynamicParameters();
-                parameters.Add("@ColumnId", columnId.Value);
+                if (!_boardByColumn.TryGetValue(columnId.Value, out var boardId))
+                {
+                    var parameters = new DynamicParameters();
+                    parameters.Add("@ColumnId", columnId.Value);
 
-                var boardId = await _db.QuerySingleOrDefaultAsync<int?>("dbo.GetBoardIdByColumn", parameters, ct);
+                    boardId = await _db.QuerySingleOrDefaultAsync<int?>("dbo.GetBoardIdByColumn", parameters, ct);
+                    _boardByColumn[columnId.Value] = boardId;
+                }
                 if (boardId is not null)
                     ids.Add(boardId.Value);
             }
@@ -54,10 +61,14 @@ public sealed class BoardAccessService : IBoardAccessService
             var taskId = scope.TaskToken.Decrypt<int>();
             if (taskId is not null)
             {
-                var parameters = new DynamicParameters();
-                parameters.Add("@TaskId", taskId.Value);
+                if (!_boardByTask.TryGetValue(taskId.Value, out var boardId))
+                {
+                    var parameters = new DynamicParameters();
+                    parameters.Add("@TaskId", taskId.Value);
 
-                var boardId = await _db.QuerySingleOrDefaultAsync<int?>("dbo.GetBoardIdByTask", parameters, ct);
+                    boardId = await _db.QuerySingleOrDefaultAsync<int?>("dbo.GetBoardIdByTask", parameters, ct);
+                    _boardByTask[taskId.Value] = boardId;
+                }
                 if (boardId is not null)
                     ids.Add(boardId.Value);
             }
@@ -82,6 +93,22 @@ public sealed class BoardAccessService : IBoardAccessService
         return canView;
     }
 
+    public async Task<bool> IsOwnerAsync(int boardId, CancellationToken ct = default)
+    {
+        if (_userContext.UserId is not int userId)
+            return false;
+        if (_isOwner.TryGetValue(boardId, out var loaded))
+            return loaded;
+
+        var parameters = new DynamicParameters();
+        parameters.Add("@UserId", userId);
+        parameters.Add("@BoardId", boardId);
+
+        var isOwner = await _db.QuerySingleOrDefaultAsync<bool?>("dbo.IsBoardOwner", parameters, ct) ?? false;
+        _isOwner[boardId] = isOwner;
+        return isOwner;
+    }
+
     public async Task<bool> HasPermissionAsync(int boardId, Permission permission, CancellationToken ct = default)
     {
         if (_userContext.UserId is not int userId)
@@ -99,20 +126,5 @@ public sealed class BoardAccessService : IBoardAccessService
         }
 
         return names.Contains(permission.ToString());
-    }
-
-    public async Task<bool> HasPermissionAsync(BoardScope scope, Permission permission, CancellationToken ct = default)
-    {
-        var ids = await ResolveAsync(scope, ct);
-        if (ids is null || ids.Count == 0)
-            return false;
-
-        foreach (var boardId in ids)
-        {
-            if (!await HasPermissionAsync(boardId, permission, ct))
-                return false;
-        }
-
-        return true;
     }
 }

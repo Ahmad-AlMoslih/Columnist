@@ -3,11 +3,16 @@
     var subtitle = ViewData["Subtitle"] as string;
     var backUrl = ViewData["BackUrl"] as string;
     var backLabel = ViewData["BackLabel"] as string;
+    var backSkeleton = ViewData["BackSkeleton"] as string;
+    var backSkeletonLabel = ViewData["BackSkeletonLabel"] as string;
 }
 <div class="kb-ph">
     @if (!string.IsNullOrEmpty(backUrl))
     {
-        <a class="kb-ph-back" href="@backUrl" aria-label="@backLabel" title="@backLabel">
+        var boost = backSkeleton is not null;
+        <a class="kb-ph-back" href="@backUrl" aria-label="@backLabel" title="@backLabel"
+           hx-boost="@(boost ? "true" : null)" hx-target="@(boost ? "#kb-page" : null)" hx-select="@(boost ? "#kb-page" : null)" hx-swap="@(boost ? "outerHTML show:window:top" : null)"
+           data-skeleton="@backSkeleton" data-skeleton-into="@(boost ? "[data-page-main]" : null)" data-skeleton-label="@backSkeletonLabel">
             <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"></path></svg>
         </a>
     }

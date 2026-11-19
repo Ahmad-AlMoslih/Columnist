@@ -1,5 +1,5 @@
 using Columnist.Auth.Security.CurrentUser;
-using Columnist.Contracts.Dtos;
+using Columnist.Auth.Security.Teams;
 using Columnist.DataAccess;
 using Columnist.Services.Realtime;
 using Columnist.Services.Tokens.Extensions;
@@ -14,10 +14,12 @@ public sealed class RemoveTeamMemberHandler : IRequestHandler<RemoveTeamMemberCo
 {
     private readonly IDbExecutor _db;
     private readonly IUserContext _userContext;
+    private readonly IUserTeamsService _teams;
     private readonly IBoardNotifier _notifier;
 
-    public RemoveTeamMemberHandler(IDbExecutor db, IUserContext userContext, IBoardNotifier notifier)
+    public RemoveTeamMemberHandler(IDbExecutor db, IUserContext userContext, IBoardNotifier notifier, IUserTeamsService teams)
     {
+        _teams = teams;
         _db = db;
         _userContext = userContext;
         _notifier = notifier;
@@ -33,13 +35,9 @@ public sealed class RemoveTeamMemberHandler : IRequestHandler<RemoveTeamMemberCo
         if (memberId is null)
             return ApiResponse<bool>.BadRequest(ErrorMessages.TeamMemberNotFound);
 
-        var userParameters = new DynamicParameters();
-        userParameters.Add("@UserId", _userContext.UserId);
-
-        var teams = await _db.QueryAsync<TeamDto>("dbo.GetUserTeams", userParameters, cancellationToken);
-        var teamName = teams.FirstOrDefault(t => t.Id == teamId.Value && t.IsOwner)?.Name;
+        var teamName = (await _teams.GetAsync(cancellationToken)).FirstOrDefault(t => t.Id == teamId.Value)?.Name;
         if (teamName is null)
-            return ApiResponse<bool>.Forbidden(ErrorMessages.Forbidden);
+            return ApiResponse<bool>.NotFound(ErrorMessages.TeamNotFound);
 
         var parameters = new DynamicParameters();
         parameters.Add("@TeamId", teamId.Value);

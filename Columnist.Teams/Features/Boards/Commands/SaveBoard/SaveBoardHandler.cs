@@ -44,7 +44,6 @@ public sealed class SaveBoardHandler : IRequestHandler<SaveBoardCommand, ApiResp
             teamId = decrypted.Value;
         }
 
-
         var statuses = (await _db.QueryAsync<ColumnStatusDto>("dbo.GetColumnStatuses", ct: cancellationToken))
     .ToDictionary(s => s.Name, s => s.Id, StringComparer.OrdinalIgnoreCase);
 

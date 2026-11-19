@@ -1,0 +1,17 @@
+@* Manage board (Boards/Manage), Access tab: the header, the tabs, the search and the access results. access-results is
+   just the results (search). *@
+<template data-skeleton-template="manage-access">
+    <div class="kb-skel lb-page">
+        <partial name="Skeletons/_SkeletonPageHeader" model="true" />
+        <nav class="bm-tabs">
+            <span class="bm-tab"><span class="kb-skel-block kb-skel-text kb-skel-tab"></span></span>
+            <span class="bm-tab"><span class="kb-skel-block kb-skel-text kb-skel-tab"></span></span>
+        </nav>
+        <div class="kb-search">
+            <span class="kb-skel-block kb-skel-input"></span>
+        </div>
+        <div>
+            <partial name="Skeletons/_SkeletonBoardAccess" />
+        </div>
+    </div>
+</template>

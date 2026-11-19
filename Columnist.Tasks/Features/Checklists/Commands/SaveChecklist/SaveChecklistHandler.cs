@@ -1,4 +1,5 @@
 using Columnist.Auth.Security.CurrentUser;
+using Columnist.Auth.Security.Boards;
 using Columnist.Contracts.Dtos;
 using Columnist.DataAccess;
 using Columnist.Services.Realtime;
@@ -15,12 +16,14 @@ public sealed class SaveChecklistHandler : IRequestHandler<SaveChecklistCommand,
     private readonly IDbExecutor _db;
     private readonly IUserContext _userContext;
     private readonly IBoardNotifier _notifier;
+    private readonly IBoardAccessService _boards;
 
-    public SaveChecklistHandler(IDbExecutor db, IUserContext userContext, IBoardNotifier notifier)
+    public SaveChecklistHandler(IDbExecutor db, IUserContext userContext, IBoardNotifier notifier, IBoardAccessService boards)
     {
         _db = db;
         _userContext = userContext;
         _notifier = notifier;
+        _boards = boards;
     }
 
     public async Task<ApiResponse<string>> Handle(SaveChecklistCommand request, CancellationToken cancellationToken)
@@ -48,16 +51,10 @@ public sealed class SaveChecklistHandler : IRequestHandler<SaveChecklistCommand,
         if (result is not { Result: 0, Id: not null })
             return ApiResponse<string>.NotFound(ErrorMessages.ChecklistNotFound);
 
-        var boardId = await GetBoardIdByTaskAsync(taskId.Value, cancellationToken);
-        if (boardId is not null)
-            await _notifier.BoardChangedAsync(boardId.Value, cancellationToken);
+        // The task's board was already read by AuthorizationBehavior (per-request cache): no second lookup.
+        var boardIds = await _boards.ResolveAsync(request.GetBoardScope(), cancellationToken);
+        if (boardIds is [var boardId])
+            await _notifier.BoardChangedAsync(boardId, cancellationToken);
         return ApiResponse<string>.Success(result.Id.Value.Encrypt());
-    }
-
-    private async Task<int?> GetBoardIdByTaskAsync(int taskId, CancellationToken ct)
-    {
-        var parameters = new DynamicParameters();
-        parameters.Add("@TaskId", taskId);
-        return await _db.QuerySingleOrDefaultAsync<int?>("dbo.GetBoardIdByTask", parameters, ct);
     }
 }

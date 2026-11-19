@@ -28,8 +28,18 @@
         setOpen(!isOpen());
     });
 
-    // After a side-menu navigation, reload the menu so its highlight follows the new page.
+    // After a side-menu navigation, reload the menu so its highlight follows the new page. A Board · Dashboard · Report
+    // tab (it swaps only #kb-tab-page) leaves the menu as it is: beforeSwap fires before the URL is pushed.
+    var tabSwap = false;
+    document.addEventListener('htmx:beforeSwap', function (evt) {
+        tabSwap = !!(evt.detail.target && evt.detail.target.id === 'kb-tab-page');
+    });
+
     document.addEventListener('htmx:pushedIntoHistory', function () {
+        if (tabSwap) {
+            tabSwap = false;
+            return;
+        }
         htmx.trigger(document.body, 'kb:navigated');
     });
 })();

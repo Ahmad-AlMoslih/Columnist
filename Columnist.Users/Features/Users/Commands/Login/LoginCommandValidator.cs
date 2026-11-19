@@ -7,8 +7,8 @@ public sealed class LoginCommandValidator : AbstractValidator<LoginCommand>
 {
     public LoginCommandValidator()
     {
-        RuleFor(x => x.Username)
-            .NotEmpty().WithMessage(ErrorMessages.UsernameRequired);
+        RuleFor(x => x.Email)
+            .NotEmpty().WithMessage(ErrorMessages.EmailRequired);
 
         RuleFor(x => x.Password)
             .NotEmpty().WithMessage(ErrorMessages.PasswordRequired);

@@ -28,9 +28,9 @@ public sealed class ForgotPasswordHandler : IRequestHandler<ForgotPasswordComman
     {
         var token = _resetTokens.Generate();
 
-        // No row = unknown username, no email on the account, or an email already sent in the last 2 minutes.
+        // No row = unknown email, or an email already sent in the last 2 minutes.
         var parameters = new DynamicParameters();
-        parameters.Add("@Username", request.Username);
+        parameters.Add("@Email", request.Email.Trim());
         parameters.Add("@TokenHash", _resetTokens.Hash(token));
         var recipient = await _db.QuerySingleOrDefaultAsync<PasswordResetRecipientDto>("dbo.CreatePasswordResetToken", parameters, ct);
         if (recipient is null)

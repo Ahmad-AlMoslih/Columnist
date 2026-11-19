@@ -7,7 +7,7 @@ public sealed class ForgotPasswordCommandValidator : AbstractValidator<ForgotPas
 {
     public ForgotPasswordCommandValidator()
     {
-        RuleFor(x => x.Username)
-            .NotEmpty().WithMessage(ErrorMessages.UsernameRequired);
+        RuleFor(x => x.Email)
+            .NotEmpty().WithMessage(ErrorMessages.EmailRequired);
     }
 }

@@ -109,7 +109,8 @@
         <p class="ts-note">Everything that happened in this team, on every board.</p>
         <form class="au-filters" method="get" action="@logsUrl"
               hx-get="@logsUrl" hx-trigger="change, keyup changed delay:300ms from:[data-logs-search]"
-              hx-target="#kb-team-logs" hx-select="#kb-team-logs" hx-swap="outerHTML" hx-push-url="true">
+              hx-target="#kb-team-logs" hx-select="#kb-team-logs" hx-swap="outerHTML" hx-push-url="true"
+              data-skeleton="log-list" data-skeleton-label="Loading logs">
             <input type="hidden" name="token" value="@Model.Token" />
             <input type="search" name="q" value="@logs.Search" class="kb-search-input au-search" placeholder="Search logs…" aria-label="Search logs" maxlength="100" autocomplete="off" data-logs-search />
             <select name="actor" class="au-select" aria-label="Person">

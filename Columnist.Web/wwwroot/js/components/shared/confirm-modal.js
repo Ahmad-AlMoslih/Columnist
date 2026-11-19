@@ -108,4 +108,20 @@
         };
         modal.show();
     });
+
+    // Deleted tasks → a restored row is removed out of band (hx-swap-oob="delete"): after the last one, the page's
+    // empty state. The swap is synchronous, so the grid is checked on the next tick.
+    document.addEventListener('htmx:oobBeforeSwap', function (evt) {
+        var row = evt.detail.target;
+        if (!row || !row.matches || !row.matches('.kb-deleted-card')) return;
+        var grid = row.closest('.kb-deleted-grid');
+        if (!grid) return;
+        setTimeout(function () {
+            if (!grid.isConnected || grid.querySelector('.kb-deleted-card')) return;
+            var empty = document.createElement('p');
+            empty.className = 'kb-deleted-empty';
+            empty.textContent = 'No deleted tasks.';
+            grid.replaceWith(empty);
+        }, 0);
+    });
 })();

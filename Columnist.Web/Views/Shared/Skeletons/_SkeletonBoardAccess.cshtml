@@ -1,0 +1,47 @@
+@* Loading skeleton: the board access results (_Access #ba-results): the count line, the people list and the drag panel.
+   Used by the manage-access and access-results templates in _Skeletons. *@
+<p class="pm-count-text"><span class="kb-skel-block kb-skel-text kb-skel-w-30"></span></p>
+<div class="ba-layout">
+    <section class="ba-list">
+        <div class="ba-list-head">
+            <span><span class="kb-skel-block kb-skel-text kb-skel-label"></span></span>
+            <span><span class="kb-skel-block kb-skel-text kb-skel-label"></span></span>
+            <span></span>
+        </div>
+        @* Four rows: the first is the owner's; every second one has two tags ("-" = left out). *@
+        <div class="ba-row" data-skeleton-repeat="4" data-skeleton-cycle="ba-row-owner|||">
+            <div class="ba-person">
+                <span class="kb-skel-block kb-skel-strong kb-skel-circle kb-skel-avatar"></span>
+                <div>
+                    <strong><span class="kb-skel-block kb-skel-text kb-skel-name"></span></strong>
+                    <span><span class="kb-skel-block kb-skel-text kb-skel-label"></span></span>
+                </div>
+            </div>
+            <div class="ba-chips">
+                <span class="kb-skel-block kb-skel-tag"></span>
+                <span class="kb-skel-block kb-skel-tag" data-skeleton-cycle="-|"></span>
+            </div>
+            <span></span>
+        </div>
+    </section>
+    <aside class="ba-panel">
+        <div class="pm-group">
+            <span class="pm-group-name"><span class="kb-skel-block kb-skel-text kb-skel-label"></span></span>
+            <span class="kb-skel-block kb-skel-input kb-skel-h-38"></span>
+            <div class="ba-candidates">
+                <span class="pm-drag" data-skeleton-repeat="3">
+                    <span class="kb-skel-block kb-skel-grip"></span>
+                    <span class="kb-skel-block kb-skel-strong kb-skel-circle kb-skel-avatar-sm"></span>
+                    <span class="kb-skel-block kb-skel-text kb-skel-w-55"></span>
+                </span>
+            </div>
+        </div>
+        <div class="pm-group">
+            <span class="pm-group-name"><span class="kb-skel-block kb-skel-text kb-skel-label"></span></span>
+            <span class="pm-drag" data-skeleton-repeat="4">
+                <span class="kb-skel-block kb-skel-grip"></span>
+                <span class="kb-skel-block kb-skel-text" data-skeleton-cycle="kb-skel-w-45|kb-skel-w-65"></span>
+            </span>
+        </div>
+    </aside>
+</div>

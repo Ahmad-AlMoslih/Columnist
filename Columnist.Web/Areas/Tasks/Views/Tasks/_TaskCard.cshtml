@@ -1,15 +1,15 @@
 @model Columnist.Tasks.Features.Tasks.Queries.GetBoard.Models.GetBoardTaskModel
-@using Columnist.Auth.Authorization
-@inject Columnist.Auth.Security.Boards.IBoardAccessService BoardAccess
 @{
     var boardToken = ViewData["BoardToken"] as string;
-    var canWrite = await BoardAccess.HasPermissionAsync(new BoardScope(BoardToken: boardToken), Permission.TasksWrite);
-    var canDelete = await BoardAccess.HasPermissionAsync(new BoardScope(BoardToken: boardToken), Permission.TasksDelete);
-    var isDone = Model.StatusName.Equals("Done", StringComparison.OrdinalIgnoreCase);
-    var noAccessNames = Model.Assignees.Where(a => !a.HasAccess).Select(a => a.FullName).ToList();
+    var canWrite = Model.CanWrite;
+    var canDelete = Model.CanDelete;
+    var isDone = Model.StatusName.Equals("Done", StringComparison.OrdinalIgnoreCase);// task status
+    var noAccessNames = Model.Assignees.Where(a => !a.HasAccess).Select(a => a.FullName).ToList();//task assignees who no longer have access
 }
 
-<article class="kb-card" data-task-token="@(canWrite? Model.Token: null)" data-card-token="@Model.Token">
+@* ViewData["CardOob"] = true: marked hx-swap-oob, sent along with a task-view save to update this card on the board. *@
+<article id="kb-card-@Model.Key" class="kb-card" data-task-token="@(canWrite? Model.Token: null)" data-card-token="@Model.Token"
+         hx-swap-oob="@(ViewData["CardOob"] is true ? "true" : null)">
     @if (Model.FirstImageUrl is not null)
     {
         <div class="kb-cover">
@@ -21,43 +21,18 @@
         <div class="kb-card-title-row">
             <h3 class="kb-card-title">
                 <a asp-action="Details" asp-route-token="@Model.Token" asp-route-boardToken="@boardToken" data-card-link
-                   hx-get="@Url.Action("Details", new { token = Model.Token, boardToken })" hx-target="#kb-task-modal-body" hx-swap="innerHTML">@Model.Title</a>
+                   hx-get="@Url.Action("Details", new { token = Model.Token, boardToken })" hx-target="#kb-task-modal-body" hx-swap="innerHTML" data-skeleton="task-view" data-skeleton-label="Loading task">@Model.Title</a>
             </h3>
-            @if (canWrite || canDelete)
+            @if (canDelete)
             {
-                <div class="dropdown">
-                    <button type="button" class="kb-menu-btn" data-bs-toggle="dropdown" aria-expanded="false"
-                            data-bs-popper-config='{"strategy":"fixed"}' aria-label="Task actions">
-                        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                            <circle cx="5" cy="12" r="2" />
-                            <circle cx="12" cy="12" r="2" />
-                            <circle cx="19" cy="12" r="2" />
-                        </svg>
+                <form class="kb-card-delete" asp-action="Delete" method="post" data-confirm-title="Delete task?" data-confirm-yes="Delete"
+                      data-confirm-text="@($"\"{Model.Title}\" moves to Deleted tasks. It can be restored.")"
+                      hx-post="@Url.Action("Delete")" hx-target="#kb-toasts" hx-select="#kb-toasts" hx-swap="outerHTML">
+                    <input type="hidden" name="token" value="@Model.Token" />
+                    <button type="submit" class="kb-delete-btn" aria-label="Delete task" title="Delete task">
+                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path></svg>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        @if (canWrite)
-                        {
-                            <li>
-                                <a class="dropdown-item" asp-action="Save" asp-route-token="@Model.Token" asp-route-boardToken="@boardToken"
-                                   hx-get="@Url.Action("Save", new { token = Model.Token, boardToken })" hx-target="#kb-task-modal-body" hx-swap="innerHTML">Edit</a>
-                            </li>
-                        }
-                        @if (canDelete)
-                        {
-                            <li><hr class="dropdown-divider" /></li>
-                            <li>
-                                <form asp-action="Delete" method="post"
-                                      data-confirm-title="Delete task?" data-confirm-yes="Delete"
-                                      data-confirm-text="@($"\"{Model.Title}\" moves to Deleted tasks. It can be restored.")"
-                                      hx-post="@Url.Action("Delete")" hx-target="#kb-board-region" hx-select="#kb-board-region" hx-select-oob="#kb-toasts" hx-swap="outerHTML">
-                                    <input type="hidden" name="token" value="@Model.Token" />
-                                    <input type="hidden" name="boardToken" value="@boardToken" />
-                                    <button type="submit" class="dropdown-item text-danger">Delete</button>
-                                </form>
-                            </li>
-                        }
-                    </ul>
-                </div>
+                </form>
             }
         </div>
 

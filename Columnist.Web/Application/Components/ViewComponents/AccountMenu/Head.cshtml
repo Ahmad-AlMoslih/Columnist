@@ -1,0 +1,15 @@
+@model Columnist.Web.Application.Components.ViewComponents.AccountMenu.AccountMenuViewModel
+<div class="kb-um-head" id="kb-um-head">
+    @await Html.PartialAsync("~/Application/Components/ViewComponents/AccountMenu/_Avatar.cshtml", Model)
+    <div class="kb-um-who">
+        <div class="kb-um-name">@Model.FullName</div>
+        @if (Model.Shell)
+        {
+            <div class="kb-um-sub" aria-hidden="true"><span class="kb-skel-block kb-skel-text kb-skel-label"></span></div>
+        }
+        else if (Model.Menu?.TeamName is not null)
+        {
+            <div class="kb-um-sub">@Model.Menu.RoleLabel · @Model.Menu.TeamName</div>
+        }
+    </div>
+</div>

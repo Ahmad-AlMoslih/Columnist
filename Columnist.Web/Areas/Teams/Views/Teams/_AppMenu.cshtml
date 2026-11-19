@@ -28,7 +28,8 @@
             }
             else if (team.IsExpired)
             {
-                <a class="kb-drawer-item" asp-area="Teams" asp-controller="Teams" asp-action="Index">
+                <a class="kb-drawer-item" asp-area="Teams" asp-controller="Teams" asp-action="Index"
+                   data-skeleton="teams" data-skeleton-into="[data-page-main]" data-skeleton-label="Loading teams">
                     <span class="kb-team-badge">@Initials(team.Name)</span>
                     <span>@team.Name</span>
                     <span class="kb-drawer-tag">Enter code</span>
@@ -36,7 +37,8 @@
             }
             else
             {
-                <form method="post" asp-area="Teams" asp-controller="Teams" asp-action="Switch" hx-push-url="true">
+                <form method="post" asp-area="Teams" asp-controller="Teams" asp-action="Switch" hx-push-url="true"
+                      data-skeleton="board" data-skeleton-into="[data-page-main]" data-skeleton-label="Loading board">
                     <input type="hidden" name="token" value="@team.Token" />
                     <button type="submit" class="kb-drawer-item">
                         <span class="kb-team-badge">@Initials(team.Name)</span>
@@ -46,7 +48,8 @@
                 </form>
             }
         }
-        <a class="kb-drawer-item @(menuPage == "lobby" ? "active" : null)" aria-current="@(menuPage == "lobby" ? "page" : null)" asp-area="Teams" asp-controller="Teams" asp-action="Index">
+        <a class="kb-drawer-item @(menuPage == "lobby" ? "active" : null)" aria-current="@(menuPage == "lobby" ? "page" : null)" asp-area="Teams" asp-controller="Teams" asp-action="Index"
+           data-skeleton="teams" data-skeleton-into="[data-page-main]" data-skeleton-label="Loading teams">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
             Create or join a team
         </a>
@@ -65,7 +68,8 @@
             </div>
             @foreach (var board in Model.Boards)
             {
-                <a class="kb-drawer-item @(board.IsCurrent ? "active" : null)" aria-current="@(board.IsCurrent ? "page" : null)" asp-area="Tasks" asp-controller="Tasks" asp-action="Index" asp-route-boardToken="@board.Token">
+                <a class="kb-drawer-item @(board.IsCurrent ? "active" : null)" aria-current="@(board.IsCurrent ? "page" : null)" asp-area="Tasks" asp-controller="Tasks" asp-action="Index" asp-route-boardToken="@board.Token"
+                   data-skeleton="board" data-skeleton-into="[data-page-main]" data-skeleton-label="Loading board">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 4v16M12 4v10M18 4v13"></path></svg>
                     @board.Name
                 </a>
@@ -81,7 +85,8 @@
             <div class="kb-drawer-sep"></div>
             <section class="kb-drawer-section" aria-label="Manage team">
                 <span class="kb-drawer-label">Manage (Super Admin)</span>
-                <a class="kb-drawer-item @(menuPage == "team-settings" ? "active" : null)" aria-current="@(menuPage == "team-settings" ? "page" : null)" asp-area="Teams" asp-controller="Teams" asp-action="Settings" asp-route-token="@current.Token">
+                <a class="kb-drawer-item @(menuPage == "team-settings" ? "active" : null)" aria-current="@(menuPage == "team-settings" ? "page" : null)" asp-area="Teams" asp-controller="Teams" asp-action="Settings" asp-route-token="@current.Token"
+                   data-skeleton="team-settings" data-skeleton-into="[data-page-main]" data-skeleton-label="Loading team settings">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"></path><circle cx="17" cy="9" r="2.5"></circle><path d="M16 14.2c3 .3 5.5 2.4 5.5 5.8"></path></svg>
                     Team settings
                 </a>

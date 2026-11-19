@@ -1,6 +1,6 @@
 // Task history in the View task panel: show/hide the timeline and reveal older entries.
 // The open/closed and "Show older" state is kept on #kb-task-history (data-history-open / data-history-all)
-// and re-applied after a live refresh replaces the timeline.
+// and carried into the new history while the task view is morphed (a save or a live refresh), so it never flickers.
 (function () {
     function applyOpen(region, open) {
         var toggle = region.querySelector('[data-history-toggle]');
@@ -44,26 +44,22 @@
         }
     });
 
-    // The swap resets the region's attributes to the server's, so hold the state across it.
-    var saved = null;
-
-    function save(target) {
-        if (!target || target.id !== 'kb-task-history') return;
-        saved = { open: target.dataset.historyOpen === 'true', all: target.dataset.historyAll === 'true' };
+    // The history is refreshed with the whole task view (#kb-task-view, morphed): the server renders it closed,
+    // so the open state is put on the new version before the morph applies it.
+    if (window.Idiomorph) {
+        var beforeNodeMorphed = Idiomorph.defaults.callbacks.beforeNodeMorphed;
+        Idiomorph.defaults.callbacks.beforeNodeMorphed = function (oldNode, newNode) {
+            if (oldNode.nodeType === 1 && newNode.nodeType === 1 && oldNode.id === 'kb-task-history') {
+                if (oldNode.dataset.historyOpen === 'true') {
+                    newNode.dataset.historyOpen = 'true';
+                    applyOpen(newNode, true);
+                }
+                if (oldNode.dataset.historyAll === 'true') {
+                    newNode.dataset.historyAll = 'true';
+                    applyAll(newNode);
+                }
+            }
+            return beforeNodeMorphed(oldNode, newNode);
+        };
     }
-
-    function restore() {
-        if (!saved) return;
-        var state = saved;
-        saved = null;
-        var region = document.getElementById('kb-task-history');
-        if (!region) return;
-        if (state.open) region.dataset.historyOpen = 'true';
-        if (state.all) region.dataset.historyAll = 'true';
-        applyOpen(region, state.open);
-        if (state.all) applyAll(region);
-    }
-
-    document.addEventListener('htmx:beforeSwap', function (evt) { save(evt.detail.target); });
-    document.addEventListener('htmx:afterSettle', restore);
 })();

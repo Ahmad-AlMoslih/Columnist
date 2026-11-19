@@ -31,9 +31,15 @@ public sealed class GetMyBoardsHandler : IRequestHandler<GetMyBoardsQuery, ApiRe
         parameters.Add("@TeamId", teamId.Value);
 
         var rows = await _db.QueryAsync<OptionDto>("dbo.GetUserBoards", parameters, cancellationToken);
+
         var currentId = request.CurrentBoardToken?.Decrypt<int>();
         IReadOnlyList<MyBoardModel> boards = rows
-            .Select(b => new MyBoardModel { Token = b.Id.Encrypt(), Name = b.Name, IsCurrent = b.Id == currentId })
+            .Select(b => new MyBoardModel
+            {
+                Token = b.Id.Encrypt(),
+                Name = b.Name,
+                IsCurrent = b.Id == currentId
+            })
             .ToList();
 
         return ApiResponse<IReadOnlyList<MyBoardModel>>.Success(boards);

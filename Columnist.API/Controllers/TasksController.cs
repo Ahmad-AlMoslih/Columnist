@@ -5,7 +5,6 @@ using Columnist.Services.Tokens.Extensions;
 using Columnist.Tasks.Features.Tasks.Commands.SaveTask;
 using Columnist.Tasks.Features.Tasks.Commands.DeleteTask;
 using Columnist.Tasks.Features.Tasks.Queries.GetAllTasks;
-using Columnist.Tasks.Features.Tasks.Queries.GetTaskForm;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -35,12 +34,6 @@ public sealed class TasksController : ControllerBase
     public async Task<IActionResult> Delete(int id, CancellationToken ct)
     {
         return (await _mediator.Send(new DeleteTaskCommand(id.Encrypt()), ct)).ToActionResult();
-    }
-
-    [HttpGet("form-options")]
-    public async Task<IActionResult> GetFormOptions(CancellationToken ct)
-    {
-        return (await _mediator.Send(new GetTaskFormQuery(null), ct)).ToActionResult();
     }
 
     [HttpPost]

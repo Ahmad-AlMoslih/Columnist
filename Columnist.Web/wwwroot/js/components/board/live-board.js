@@ -12,29 +12,34 @@
             evt.detail.headers['X-Board-Connection'] = connection.connectionId;
     });
 
-    // One live refresh at a time: board first, then comments, then the open task's checklists, then its history.
+    // One live refresh at a time: board first, then one card, then comments, then the open task's checklists, then the task view.
     var busy = false;
     var pendingBoard = false;
+    var pendingCard = null;           // the stable key of the one card to re-render (my own checklist change)
     var pendingComments = false;
     var pendingChecklists = false;
-    var pendingHistory = false;
+    var pendingTask = false;
     var deferredChecklists = false;   // skipped while typing in the checklists region; runs once focus leaves it
 
     function run() {
-        while (!busy && (pendingBoard || pendingComments || pendingChecklists || pendingHistory)) {
+        while (!busy && (pendingBoard || pendingCard || pendingComments || pendingChecklists || pendingTask)) {
             var next = null;
             if (pendingBoard) {
                 pendingBoard = false;
+                pendingCard = null;   // the board re-render has every card
                 next = refreshBoard();
+            } else if (pendingCard) {
+                next = refreshCard(pendingCard);
+                pendingCard = null;
             } else if (pendingComments) {
                 pendingComments = false;
                 next = refreshComments();
             } else if (pendingChecklists) {
                 pendingChecklists = false;
                 next = refreshChecklists();
-            } else if (pendingHistory) {
-                pendingHistory = false;
-                next = refreshHistory();
+            } else if (pendingTask) {
+                pendingTask = false;
+                next = refreshTask();
             }
             if (next) {
                 busy = true;
@@ -50,7 +55,7 @@
         var region = document.getElementById('kb-board-region');
         // The columns carry the URL with the shown search and filter; it is re-rendered with every swap.
         var columns = document.querySelector('#kb-board-columns[data-refresh-url]');
-        if (!region || !columns) return null;
+        if (!region || !columns) return refreshReport();
         if (document.body.hasAttribute('data-dragging')) return null;
         // Source = the region, so its hx-ext="morph" applies: the board is morphed in place, not replaced.
         // The open filter panel is left alone (data-morph-skip, board-filter.js).
@@ -58,6 +63,30 @@
             source: region,
             target: '#kb-board-region',
             select: '#kb-board-region',
+            swap: 'morph:outerHTML',
+            headers: { 'X-Live-Refresh': '1' }
+        });
+    }
+
+    // One board card, swapped in from the board's Card URL (the same re-render as board-dnd.js after a drag).
+    // A 204 (task gone or no access) leaves it as it is.
+    function refreshCard(key) {
+        var form = document.getElementById('kb-move-form');
+        var card = document.getElementById('kb-card-' + key);
+        if (!form || !card || document.body.hasAttribute('data-dragging')) return null;
+        var url = new URL(form.dataset.cardUrl, window.location.href);
+        url.searchParams.set('token', card.dataset.cardToken);
+        return htmx.ajax('GET', url.pathname + url.search, { source: card, target: card, select: '.kb-card', swap: 'outerHTML' });
+    }
+
+    // The Dashboard / Report region, morphed in place from its URL (it carries the shown filter).
+    function refreshReport() {
+        var report = document.querySelector('#kb-report-region[data-refresh-url]');
+        if (!report) return null;
+        return htmx.ajax('GET', report.dataset.refreshUrl, {
+            source: report,
+            target: '#kb-report-region',
+            select: '#kb-report-region',
             swap: 'morph:outerHTML',
             headers: { 'X-Live-Refresh': '1' }
         });
@@ -106,14 +135,16 @@
         }, 0);
     });
 
-    // Source = the region, so its hx-ext="morph" applies.
-    function refreshHistory() {
-        var region = document.querySelector('#kb-task-history[data-task-history-url]');
-        if (!region) return null;
-        return htmx.ajax('GET', region.dataset.taskHistoryUrl, {
-            source: region,
-            target: '#kb-task-history',
-            select: '#kb-task-history',
+    // The open task view, morphed in (fields, history, RowVersion): only what changed is updated. A field being edited
+    // is left alone and catches up when it closes (data-morph-skip, task-inline.js); the checklists and the comments
+    // keep their own refreshes.
+    function refreshTask() {
+        var view = document.querySelector('#kb-task-view[data-task-view-url]');
+        if (!view) return null;
+        return htmx.ajax('GET', view.dataset.taskViewUrl, {
+            source: view,
+            target: '#kb-task-view',
+            select: '#kb-task-view',
             swap: 'morph:outerHTML',
             headers: { 'X-Live-Refresh': '1' }
         });
@@ -122,25 +153,48 @@
     connection.on('BoardChanged', function () {
         pendingBoard = true;
         pendingChecklists = true;
-        pendingHistory = true;
+        pendingTask = true;
         run();
     });
     connection.on('CommentsChanged', function () {
         pendingBoard = true;
         pendingComments = true;
-        pendingHistory = true;
+        pendingTask = true;
         run();
     });
 
-    // My own comment or checklist change isn't sent back to me, so refresh the history after one:
-    // a POST whose response settled the comments or checklists region.
+    // My own changes aren't sent back to me. A field save on the board brings its card out of band (FieldSavedAsync):
+    // the whole board behind the popup is refreshed only for a column change or a new task (data-board-refresh on the form)
+    // or when the board is filtered. After a comment or checklist change refresh the task view too, for its history and
+    // the new RowVersion; a checklist change also re-renders the task's card (its checklist badge).
     document.addEventListener('htmx:afterSettle', function (evt) {
         var config = evt.detail.requestConfig;
         if (!config || config.verb !== 'post') return;
         var settled = evt.detail.elt;
-        if (!settled || !(settled.id === 'kb-comments' || settled.id === 'kb-task-checklists'
-            || (settled.querySelector && settled.querySelector('#kb-comments, #kb-task-checklists')))) return;
-        pendingHistory = true;
+        if (!settled) return;
+        // On the Dashboard and the Report every change made from the popup (a delete included) refreshes the page.
+        var onReport = !!document.getElementById('kb-report-region');
+        if (settled.id === 'kb-task-view') {
+            var filters = document.getElementById('kb-active-filters');
+            var filtered = !!filters && !filters.hidden;
+            var source = config.elt;
+            if (onReport || filtered || (source && source.hasAttribute && source.hasAttribute('data-board-refresh'))) {
+                pendingBoard = true;
+                run();
+            }
+            return;
+        }
+        if (onReport && settled.id === 'kb-toasts') {
+            pendingBoard = true;
+            run();
+            return;
+        }
+        var comments = settled.id === 'kb-comments' || !!(settled.querySelector && settled.querySelector('#kb-comments'));
+        var checklistsRegion = settled.id === 'kb-task-checklists' ? settled : (settled.querySelector && settled.querySelector('#kb-task-checklists'));
+        if (!comments && !checklistsRegion) return;
+        if (onReport) pendingBoard = true;
+        else if (checklistsRegion && checklistsRegion.dataset.clTask) pendingCard = checklistsRegion.dataset.clTask;
+        pendingTask = true;
         run();
     });
 

@@ -1,13 +1,8 @@
 @model Columnist.Tasks.Features.Tasks.Queries.GetDeletedTasks.Models.GetDeletedTasksModel
-@using Columnist.Auth.Authorization
-@inject Columnist.Auth.Security.Boards.IBoardAccessService BoardAccess
 @{
     ViewData["Title"] = "Deleted tasks";
     var boardMenu = Model.BoardToken is null ? null : new Columnist.Web.Models.BoardUserMenuViewModel(
-        Model.BoardToken,
-        await BoardAccess.HasPermissionAsync(new BoardScope(BoardToken: Model.BoardToken), Permission.DeletedTasksRead),
-        await BoardAccess.HasPermissionAsync(new BoardScope(BoardToken: Model.BoardToken), Permission.LogsRead),
-        ViewData["IsTeamOwner"] is true);
+        Model.BoardToken, Model.CanSeeDeleted, Model.CanSeeLogs, Model.CanManage);
 }
 
 @if (boardMenu?.Any == true)
@@ -45,7 +40,9 @@
         title = "Deleted tasks",
         subtitle = $"{ViewData["BoardName"]} · deleted tasks can be restored to the end of their column.",
         backUrl = Url.Action("Index", "Tasks", new { area = "Tasks", boardToken = Model.BoardToken }),
-        backLabel = "Back to board"
+        backLabel = "Back to board",
+        backSkeleton = "board",
+        backSkeletonLabel = "Loading board"
     })
 
     @await Component.InvokeAsync("SearchBox", new
@@ -53,7 +50,9 @@
         url = Url.Action("Index", "DeletedTasks", new { area = "Tasks", boardToken = Model.BoardToken }),
         target = "#kb-deleted-results",
         value = Model.Search,
-        placeholder = "Search deleted tasks by title…"
+        placeholder = "Search deleted tasks by title…",
+        skeleton = "deleted-results",
+        skeletonLabel = "Loading deleted tasks"
     })
 
     <div id="kb-deleted-results">
@@ -66,7 +65,7 @@
         <div class="kb-deleted-grid">
             @foreach (var task in Model.Tasks)
             {
-                <article class="kb-deleted-card">
+                <article id="kb-deleted-@task.Key" class="kb-deleted-card">
                     <div class="kb-deleted-card-top">
                         <span class="kb-deleted-pill">Deleted</span>
                         <span class="kb-deleted-where">@task.BoardName › @task.ColumnName</span>
@@ -88,12 +87,11 @@
                         Deleted by @(task.DeletedByName ?? "unknown") · @task.DeletedAt.ToLocalTime().ToString("dd MMM yyyy, HH:mm")
                     </p>
 
-                    @if (await BoardAccess.HasPermissionAsync(new BoardScope(TaskToken: task.Token), Permission.DeletedTasksWrite))
+                    @if (Model.CanRestore)
                     {
                         <form asp-area="Tasks" asp-controller="DeletedTasks" asp-action="Restore" method="post" data-confirm="restore" data-task-title="@task.Title"
-                              hx-post="@Url.Action("Restore", "DeletedTasks", new { area = "Tasks" })" hx-target="#kb-deleted-region" hx-select="#kb-deleted-region" hx-select-oob="#kb-toasts" hx-swap="outerHTML">
+                              hx-post="@Url.Action("Restore", "DeletedTasks", new { area = "Tasks" })" hx-target="#kb-toasts" hx-select="#kb-toasts" hx-swap="outerHTML">
                             <input type="hidden" name="token" value="@task.Token" />
-                            <input type="hidden" name="boardToken" value="@Model.BoardToken" />
                             <button type="submit" class="kb-restore">Restore</button>
                         </form>
                     }

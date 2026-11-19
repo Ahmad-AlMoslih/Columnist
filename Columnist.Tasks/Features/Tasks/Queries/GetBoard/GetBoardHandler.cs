@@ -1,3 +1,5 @@
+using Columnist.Auth.Authorization;
+using Columnist.Auth.Security.Boards;
 using Columnist.Auth.Security.CurrentUser;
 using Columnist.Auth.Security.Photos;
 using Columnist.Contracts.Dtos;
@@ -21,13 +23,15 @@ public sealed class GetBoardHandler : IRequestHandler<GetBoardQuery, ApiResponse
     private readonly IDmsService _dms;
     private readonly IUserContext _userContext;
     private readonly IUserPhotoService _photos;
+    private readonly IBoardAccessService _boards;
 
-    public GetBoardHandler(IDbExecutor db, IDmsService dms, IUserContext userContext, IUserPhotoService photos)
+    public GetBoardHandler(IDbExecutor db, IDmsService dms, IUserContext userContext, IUserPhotoService photos, IBoardAccessService boards)
     {
         _db = db;
         _dms = dms;
         _userContext = userContext;
         _photos = photos;
+        _boards = boards;
     }
 
     public async Task<ApiResponse<GetBoardModel>> Handle(GetBoardQuery request, CancellationToken cancellationToken)
@@ -43,27 +47,25 @@ public sealed class GetBoardHandler : IRequestHandler<GetBoardQuery, ApiResponse
             .Select(c => new OptionDto { Id = c.BoardId, Name = c.BoardName })
             .ToList();
 
-        OptionDto? selected;
-        if (string.IsNullOrEmpty(request.BoardToken))
-        {
-            selected = boards.FirstOrDefault();
-        }
-        else
-        {
-            var boardId = request.BoardToken.Decrypt<int>();
-            if (boardId is null)
-                return ApiResponse<GetBoardModel>.NotFound(ErrorMessages.BoardNotFound);
+        var boardId = request.BoardToken.Decrypt<int>();
+        if (boardId is null)
+            return ApiResponse<GetBoardModel>.NotFound(ErrorMessages.BoardNotFound);
 
-            selected = boards.FirstOrDefault(b => b.Id == boardId.Value);
-            if (selected is null)
-                return ApiResponse<GetBoardModel>.NotFound(ErrorMessages.BoardNotFound);
-        }
-
+        var selected = boards.FirstOrDefault(b => b.Id == boardId.Value);
         if (selected is null)
-            return ApiResponse<GetBoardModel>.Success(new GetBoardModel());
+            return ApiResponse<GetBoardModel>.NotFound(ErrorMessages.BoardNotFound);
+
+        var canWrite = await _boards.HasPermissionAsync(selected.Id, Permission.TasksWrite, cancellationToken);
+        var canDelete = await _boards.HasPermissionAsync(selected.Id, Permission.TasksDelete, cancellationToken);
+        var canManage = await _boards.IsOwnerAsync(selected.Id, cancellationToken);
 
         var tabs = boards
-            .Select(b => new TokenOptionDto { Token = b.Id.Encrypt(), Name = b.Name, Selected = b.Id == selected.Id })
+            .Select(b => new BoardTabModel
+            {
+                Token = b.Id.Encrypt(),
+                Name = b.Name,
+                Selected = b.Id == selected.Id
+            })
             .ToList();
 
         var allTasks = await GetAllTasksAsync(selected.Id, cancellationToken);
@@ -76,8 +78,13 @@ public sealed class GetBoardHandler : IRequestHandler<GetBoardQuery, ApiResponse
         var checklistCounts = (await GetBoardChecklistCountsAsync(selected.Id, cancellationToken))
             .ToDictionary(c => c.TaskId);
 
-        var users = await GetUserOptionsAsync(selected.Id, cancellationToken);
-        var filter = BuildFilter(request.Filter ?? new BoardFilterRequest(), users, photos, out var chosenIds);
+        // The board's people are needed only for chosen assignees (the filter and its chips); the filter panel loads
+        // the full list when its dropdown opens (GetBoardFilterMembers).
+        var sentTokens = BoardFilterPeople.SentTokens(request.Filter?.Assignees);
+        IReadOnlyList<UserOptionDto> users = sentTokens.Count > 0
+            ? await BoardFilterPeople.GetUsersAsync(_db, selected.Id, _userContext.UserId, cancellationToken)
+            : [];
+        var filter = BuildFilter(request.Filter ?? new BoardFilterRequest(), users, photos, sentTokens, out var chosenIds);
 
         IEnumerable<TaskItemDto> shown = allTasks;
         var search = request.Search?.Trim();
@@ -94,6 +101,11 @@ public sealed class GetBoardHandler : IRequestHandler<GetBoardQuery, ApiResponse
             SelectedBoardName = selected.Name,
             Search = request.Search,
             Filter = filter,
+            CanWrite = canWrite,
+            CanSeeDeleted = await _boards.HasPermissionAsync(selected.Id, Permission.DeletedTasksRead, cancellationToken),
+            CanSeeLogs = await _boards.HasPermissionAsync(selected.Id, Permission.LogsRead, cancellationToken),
+            CanSeeReports = await _boards.HasPermissionAsync(selected.Id, Permission.ReportsRead, cancellationToken),
+            CanManage = canManage,
             Columns = columns
                 .Where(c => c.BoardId == selected.Id)
                 .OrderBy(c => c.Position)
@@ -102,7 +114,8 @@ public sealed class GetBoardHandler : IRequestHandler<GetBoardQuery, ApiResponse
                     ColumnToken = c.ColumnId.Encrypt(),
                     Name = c.ColumnName,
                     StatusColor = c.StatusColor,
-                    Tasks = tasks.Where(t => t.ColumnId == c.ColumnId).Select(t => ToTaskModel(t, assignees[t.Id].ToList(), checklistCounts.GetValueOrDefault(t.Id))).ToList(),
+                    IsDone = c.StatusName.Equals("Done", StringComparison.OrdinalIgnoreCase),
+                    Tasks = tasks.Where(t => t.ColumnId == c.ColumnId).Select(t => GetBoardTaskModel.From(t, assignees[t.Id].ToList(), checklistCounts.GetValueOrDefault(t.Id), _dms.GetUrl(DmsFolder.Task, t.FirstImageName), canWrite, canDelete)).ToList(),
                     TotalTaskCount = allTasks.Count(t => t.ColumnId == c.ColumnId)
                 })
                 .ToList()
@@ -110,29 +123,14 @@ public sealed class GetBoardHandler : IRequestHandler<GetBoardQuery, ApiResponse
     }
 
     // Reads the filter's query values, ignoring invalid ones. chosenIds = the chosen people ("Me" and board members).
-    private BoardFilterModel BuildFilter(BoardFilterRequest request, IReadOnlyList<UserOptionDto> users, IReadOnlyDictionary<int, string> photos, out HashSet<int> chosenIds)
+    // Members = only the chosen board members (the chips and the panel's checked options).
+    private BoardFilterModel BuildFilter(BoardFilterRequest request, IReadOnlyList<UserOptionDto> users, IReadOnlyDictionary<int, string> photos,
+        IReadOnlyDictionary<int, string> sentTokens, out HashSet<int> chosenIds)
     {
         var meId = _userContext.UserId ?? 0;
 
-        // Keep the token each person was sent with, so the open filter panel and the chips match.
-        var sentTokens = new Dictionary<int, string>();
-        foreach (var token in request.Assignees ?? [])
-        {
-            var id = token.Decrypt<int>();
-            if (id is not null)
-                sentTokens.TryAdd(id.Value, token);
-        }
-
-        var members = users
-            .Where(u => u.Id != meId)
-            .Select(u => new BoardFilterMemberModel
-            {
-                Token = sentTokens.GetValueOrDefault(u.Id) ?? u.Id.Encrypt(),
-                Name = u.Name,
-                PhotoUrl = photos.GetValueOrDefault(u.Id),
-                HasAccess = u.HasAccess,
-                Selected = sentTokens.ContainsKey(u.Id)
-            })
+        var members = BoardFilterPeople.Members(users, meId, sentTokens, photos)
+            .Where(m => m.Selected)
             .ToList();
 
         var meSelected = meId != 0 && sentTokens.ContainsKey(meId);
@@ -214,24 +212,6 @@ public sealed class GetBoardHandler : IRequestHandler<GetBoardQuery, ApiResponse
         return true;
     }
 
-    private GetBoardTaskModel ToTaskModel(TaskItemDto task, IReadOnlyList<TaskAssigneeModel> assignees, BoardChecklistCountDto? checklists)
-    {
-        return new GetBoardTaskModel
-        {
-            Token = task.Id.Encrypt(),
-            Title = task.Title,
-            Description = task.Description,
-            StatusName = task.StatusName,
-            Assignees = assignees,
-            DueDate = task.DueDate,
-            ImageCount = task.ImageCount,
-            CommentCount = task.CommentCount,
-            ChecklistDone = checklists?.Done ?? 0,
-            ChecklistTotal = checklists?.Total ?? 0,
-            FirstImageUrl = _dms.GetUrl(DmsFolder.Task, task.FirstImageName)
-        };
-    }
-
     private async Task<IReadOnlyList<BoardColumnDto>> GetBoardColumnsAsync(int teamId, CancellationToken ct)
     {
         var parameters = new DynamicParameters();
@@ -252,16 +232,6 @@ public sealed class GetBoardHandler : IRequestHandler<GetBoardQuery, ApiResponse
         var parameters = new DynamicParameters();
         parameters.Add("@BoardId", boardId);
         return await _db.QueryAsync<BoardChecklistCountDto>("dbo.GetBoardChecklistCounts", parameters, ct);
-    }
-
-    // The people the task form offers for this board.
-    private async Task<IReadOnlyList<UserOptionDto>> GetUserOptionsAsync(int boardId, CancellationToken ct)
-    {
-        var parameters = new DynamicParameters();
-        parameters.Add("@BoardId", boardId);
-        parameters.Add("@TaskId", null);
-        parameters.Add("@UserId", _userContext.UserId);
-        return await _db.QueryAsync<UserOptionDto>("dbo.GetUsersForDropdown", parameters, ct);
     }
 
     private async Task<IReadOnlyList<TaskAssigneeDto>> GetTaskAssigneesAsync(int? taskId, int? boardId, CancellationToken ct)

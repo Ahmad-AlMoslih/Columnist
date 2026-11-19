@@ -1,4 +1,5 @@
 using Columnist.Auth.Security.CurrentUser;
+using Columnist.Auth.Security.Boards;
 using Columnist.DataAccess;
 using Columnist.Services.Realtime;
 using Columnist.Services.Tokens.Extensions;
@@ -14,12 +15,14 @@ public sealed class SetChecklistItemDoneHandler : IRequestHandler<SetChecklistIt
     private readonly IDbExecutor _db;
     private readonly IUserContext _userContext;
     private readonly IBoardNotifier _notifier;
+    private readonly IBoardAccessService _boards;
 
-    public SetChecklistItemDoneHandler(IDbExecutor db, IUserContext userContext, IBoardNotifier notifier)
+    public SetChecklistItemDoneHandler(IDbExecutor db, IUserContext userContext, IBoardNotifier notifier, IBoardAccessService boards)
     {
         _db = db;
         _userContext = userContext;
         _notifier = notifier;
+        _boards = boards;
     }
 
     public async Task<ApiResponse<bool>> Handle(SetChecklistItemDoneCommand request, CancellationToken cancellationToken)
@@ -41,16 +44,10 @@ public sealed class SetChecklistItemDoneHandler : IRequestHandler<SetChecklistIt
         if (!saved)
             return ApiResponse<bool>.NotFound(ErrorMessages.ChecklistNotFound);
 
-        var boardId = await GetBoardIdByTaskAsync(taskId.Value, cancellationToken);
-        if (boardId is not null)
-            await _notifier.BoardChangedAsync(boardId.Value, cancellationToken);
+        // The task's board was already read by AuthorizationBehavior (per-request cache): no second lookup.
+        var boardIds = await _boards.ResolveAsync(request.GetBoardScope(), cancellationToken);
+        if (boardIds is [var boardId])
+            await _notifier.BoardChangedAsync(boardId, cancellationToken);
         return ApiResponse<bool>.Success(true);
-    }
-
-    private async Task<int?> GetBoardIdByTaskAsync(int taskId, CancellationToken ct)
-    {
-        var parameters = new DynamicParameters();
-        parameters.Add("@TaskId", taskId);
-        return await _db.QuerySingleOrDefaultAsync<int?>("dbo.GetBoardIdByTask", parameters, ct);
     }
 }

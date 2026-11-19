@@ -79,7 +79,7 @@
     restored.forEach(function (t) { show(t, now); });
     adopt(document);
 
-    document.addEventListener('htmx:beforeHistorySave', function () {
+    document.addEventListener('htmx:beforeHistoryUpdate', function () {
         if (stack) { stack.remove(); stack = null; }
     });
 

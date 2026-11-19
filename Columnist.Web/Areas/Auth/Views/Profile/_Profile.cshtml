@@ -1,16 +1,16 @@
 @model Columnist.Users.Features.Profile.Queries.GetProfile.Models.GetProfileModel
 @using Columnist.Users.Features.Profile.Commands.ChangePassword
-@using Columnist.Users.Features.Profile.Commands.SaveFullName
-@inject Columnist.Web.Application.Teams.CurrentTeams CurrentTeams
+@using Columnist.Users.Features.Profile.Commands.SaveProfile
 @{
-    var teams = await CurrentTeams.GetAsync();
-    var team = teams.IsSuccess ? teams.Data!.Teams.FirstOrDefault(t => t.IsCurrent) : null;
     var passwordOpen = ViewData["PasswordOpen"] is true;
     var hasPhoto = Model.PhotoUrl is not null;
+    // The saved values (Model holds what was typed after a failed save): "Save changes" is enabled only when they differ.
+    var saved = ViewData["SavedProfile"] as Columnist.Users.Features.Profile.Queries.GetProfile.Models.GetProfileModel ?? Model;
+    var detailsChanged = (Model.FullName ?? "").Trim() != saved.FullName || (Model.Username ?? "").Trim() != (saved.Username ?? "");
+    var closeProfile = TempData["CloseProfile"] is true;
 }
-@* Body of the account menu's "Profile" popup (#kb-profile-modal in _Layout). Every form swaps #kb-profile and, with
-   hx-select-oob, the account menu's button and header (rendered below, outside #kb-profile). *@
-<div class="pf" id="kb-profile">
+
+<div class="pf" id="kb-profile" data-profile-close="@(closeProfile ? "true" : null)">
     <div class="kb-task-form-head">
         <h2 class="kb-task-form-title" id="kb-profile-title">Profile</h2>
         <button type="button" class="kb-view-close" data-bs-dismiss="modal" aria-label="Close"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
@@ -48,21 +48,19 @@
         </div>
     </div>
 
-    <form method="post" asp-area="Auth" asp-controller="Profile" asp-action="SaveName"
-          hx-post="@Url.Action("SaveName", "Profile", new { area = "Auth" })"
+    <form method="post" asp-area="Auth" asp-controller="Profile" asp-action="SaveProfile" data-profile-details
+          hx-post="@Url.Action("SaveProfile", "Profile", new { area = "Auth" })"
           hx-target="#kb-profile" hx-select="#kb-profile" hx-select-oob="#kb-um-btn,#kb-um-head" hx-swap="outerHTML">
         <div class="mb-3">
             <label class="form-label" for="pf-full-name">Full name</label>
-            <input id="pf-full-name" name="fullName" class="form-control" value="@Model.FullName" maxlength="@SaveFullNameCommand.FullNameMaxLength" required autocomplete="name" />
-            @Html.ValidationMessage(nameof(SaveFullNameCommand.FullName), null, new { @class = "text-danger" })
+            <input id="pf-full-name" name="fullName" class="form-control" value="@Model.FullName" data-saved="@saved.FullName" maxlength="@SaveProfileCommand.FullNameMaxLength" required autocomplete="name" />
+            @Html.ValidationMessage(nameof(SaveProfileCommand.FullName), null, new { @class = "text-danger" })
         </div>
         <div class="mb-3">
             <label class="form-label" for="pf-username">Username</label>
-            <div class="pf-locked">
-                <input id="pf-username" class="form-control" value="@Model.Username" disabled />
-                <svg class="pf-lock" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
-            </div>
-            <p class="pf-hint">Your username can't be changed.</p>
+            <input id="pf-username" name="username" class="form-control" value="@Model.Username" data-saved="@saved.Username" maxlength="@SaveProfileCommand.UsernameMaxLength" required autocomplete="username" />
+            <p class="pf-hint">@SaveProfileCommand.UsernameMinLength–@SaveProfileCommand.UsernameMaxLength characters: letters, numbers, . _ -</p>
+            @Html.ValidationMessage(nameof(SaveProfileCommand.Username), null, new { @class = "text-danger" })
         </div>
         <div class="mb-3">
             <label class="form-label" for="pf-email">Email</label>
@@ -72,15 +70,15 @@
             </div>
             <p class="pf-hint">Your email can't be changed.</p>
         </div>
-        @if (team is not null)
+        @if (Model.TeamName is not null)
         {
             <div class="mb-3">
                 <div class="form-label">Role · Team</div>
-                <div class="pf-readonly">@(team.IsOwner ? "Super Admin" : "Member") · @team.Name</div>
+                <div class="pf-readonly">@Model.RoleLabel · @Model.TeamName</div>
             </div>
         }
         <div class="pf-actions">
-            <button type="submit" class="kb-btn-primary">Save changes</button>
+            <button type="submit" class="kb-btn-primary" data-profile-save disabled="@(!detailsChanged)">Save changes</button>
         </div>
     </form>
 
@@ -133,5 +131,5 @@
     }
 </div>
 
-<partial name="_AccountMenuButton" />
-<partial name="_AccountMenuHead" />
+@await Component.InvokeAsync("AccountMenu", new { part = "button" })
+@await Component.InvokeAsync("AccountMenu", new { part = "head" })

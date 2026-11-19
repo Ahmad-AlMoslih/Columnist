@@ -13,7 +13,7 @@ namespace Columnist.IntegrationTests.Api;
 // Read-only: only GET endpoints and read procedures. Nothing is written to the database.
 public class TasksReadTests : IClassFixture<WebApplicationFactory<Program>>
 {
-    private const string AdminUsername = "admin";   // change if your admin's username is different
+    private const string AdminEmail = "admin@example.com";   // change to your admin's email
 
     private readonly WebApplicationFactory<Program> _factory;
 
@@ -46,7 +46,7 @@ public class TasksReadTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task Get_all_as_admin_returns_200_and_success()
     {
-        var client = await ClientForAsync(AdminUsername);
+        var client = await ClientForAsync(AdminEmail);
 
         var response = await client.GetAsync("/api/tasks");
 
@@ -59,7 +59,7 @@ public class TasksReadTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task Get_by_id_of_existing_task_returns_200()
     {
         var taskId = await FirstTaskIdAsync();
-        var client = await ClientForAsync(AdminUsername);
+        var client = await ClientForAsync(AdminEmail);
 
         var response = await client.GetAsync($"/api/tasks/{taskId}");
 
@@ -69,33 +69,23 @@ public class TasksReadTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task Get_by_id_of_missing_task_returns_404()
     {
-        var client = await ClientForAsync(AdminUsername);
+        var client = await ClientForAsync(AdminEmail);
 
         var response = await client.GetAsync($"/api/tasks/{int.MaxValue}");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    [Fact]
-    public async Task Form_options_as_admin_returns_200()
-    {
-        var client = await ClientForAsync(AdminUsername);
-
-        var response = await client.GetAsync("/api/tasks/form-options");
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-    }
-
     // Builds a JWT for a real user without logging in (login would write a refresh token).
-    private async Task<HttpClient> ClientForAsync(string username)
+    private async Task<HttpClient> ClientForAsync(string email)
     {
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<IDbExecutor>();
         var jwt = scope.ServiceProvider.GetRequiredService<IJwtTokenService>();
 
         var parameters = new DynamicParameters();
-        parameters.Add("@Username", username);
-        var user = await db.QuerySingleOrDefaultAsync<UserCredentialsDto>("dbo.GetUserByUsername", parameters);
+        parameters.Add("@Email", email);
+        var user = await db.QuerySingleOrDefaultAsync<UserCredentialsDto>("dbo.GetUserByEmail", parameters);
         Assert.NotNull(user);
 
         var token = jwt.CreateToken(user.Id, user.Username, user.FullName, user.SessionVersion);
@@ -112,8 +102,8 @@ public class TasksReadTests : IClassFixture<WebApplicationFactory<Program>>
         var db = scope.ServiceProvider.GetRequiredService<IDbExecutor>();
 
         var userParameters = new DynamicParameters();
-        userParameters.Add("@Username", AdminUsername);
-        var admin = await db.QuerySingleOrDefaultAsync<UserCredentialsDto>("dbo.GetUserByUsername", userParameters);
+        userParameters.Add("@Email", AdminEmail);
+        var admin = await db.QuerySingleOrDefaultAsync<UserCredentialsDto>("dbo.GetUserByEmail", userParameters);
         Assert.NotNull(admin);
 
         var parameters = new DynamicParameters();

@@ -15,17 +15,86 @@
             if (closed) document.documentElement.setAttribute('data-nav', 'closed');
         })();
     </script>
-    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <script>
+        // Until htmx has started (it waits for every script at the end of <body>, which on a slow connection can take many
+        // seconds), a click on an htmx link or button, or a submit of an htmx form, would load a whole new page and leave it
+        // blank while it loads. Hold the last one and replay it as soon as htmx is ready.
+        (function () {
+            var verbs = '[hx-get],[hx-post],[hx-put],[hx-patch],[hx-delete]';
+            var held = null, released = false;
+
+            function boosted(el) {
+                var boost = el.closest('[hx-boost]');
+                return !!boost && boost.getAttribute('hx-boost') === 'true';
+            }
+
+            function hold(e, action) {
+                e.preventDefault();
+                e.stopPropagation();
+                held = action;
+            }
+
+            document.addEventListener('click', function (e) {
+                if (released || e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+                if (!(e.target instanceof Element)) return;
+                var el = e.target.closest(verbs);
+                if (el && el.tagName !== 'FORM') {
+                    var trigger = el.getAttribute('hx-trigger');
+                    if (trigger ? /(^|[\s,])click\b/.test(trigger) : !/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName)) {
+                        hold(e, { click: el });
+                        return;
+                    }
+                }
+                var link = e.target.closest('a[href]');
+                if (link && boosted(link) && !link.hasAttribute('download') && (!link.target || link.target === '_self')
+                    && link.origin === location.origin && link.getAttribute('href').charAt(0) !== '#') {
+                    hold(e, { click: link });
+                }
+            }, true);
+
+            document.addEventListener('submit', function (e) {
+                if (released || e.defaultPrevented) return;
+                var form = e.target;
+                if (form.matches(verbs) || boosted(form)) hold(e, { form: form, submitter: e.submitter });
+            }, true);
+
+            function release() {
+                if (released) return;
+                released = true;
+                var action = held;
+                held = null;
+                if (!action) return;
+                if (action.click) {
+                    if (action.click.isConnected) action.click.click();
+                } else if (action.form.isConnected) {
+                    if (action.submitter && action.submitter.isConnected) action.submitter.click();
+                    else if (action.form.requestSubmit) action.form.requestSubmit();
+                    else action.form.submit();
+                }
+            }
+
+            // htmx fires htmx:load on <body> once it has processed the page; window load is the fallback if htmx never starts.
+            document.addEventListener('htmx:load', function (e) {
+                if (e.target === document.body) release();
+            });
+            window.addEventListener('load', release);
+        })();
+    </script>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" asp-append-version="true" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" />
+    @* Loads without holding up the first paint; the page uses the fallback font until it arrives. *@
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" /></noscript>
     <link rel="stylesheet" href="~/css/theme.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/columnist.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/Columnist.Web.styles.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/logs.css" asp-append-version="true" />
 </head>
-<body>
+@* hx-history="false": htmx never snapshots the page for its history cache (size 0 anyway). The snapshot cloned the
+   board, so its lazy task images started downloading on the Dashboard. Back/Forward reload the page, as before. *@
+<body hx-history="false">
     <div class="kb-shell">
         @if (UserContext.IsAuthenticated)
         {
@@ -35,7 +104,34 @@
                          hx-get="@Url.Action("Menu", "Teams", new { area = "Teams" })"
                          hx-trigger="load, kb:navigated from:body"
                          hx-swap="innerHTML">
-                        <p class="kb-view-empty">Loading…</p>
+                        <div class="kb-skel-delay kb-skel-menu" aria-busy="true" aria-label="Loading menu">
+                            <div class="kb-drawer-section">
+                                <span class="kb-drawer-label"><span class="kb-skel-block kb-skel-text kb-skel-label"></span></span>
+                                @for (var i = 0; i < 2; i++)
+                                {
+                                    <div class="kb-drawer-item">
+                                        <span class="kb-skel-block kb-skel-strong kb-skel-badge"></span>
+                                        <span class="kb-skel-block kb-skel-text kb-skel-w-45"></span>
+                                        <span class="kb-skel-block kb-skel-pill kb-skel-chip-sm kb-skel-push-right"></span>
+                                    </div>
+                                }
+                                <div class="kb-drawer-item">
+                                    <span class="kb-skel-block kb-skel-icon"></span>
+                                    <span class="kb-skel-block kb-skel-text kb-skel-w-65"></span>
+                                </div>
+                            </div>
+                            <div class="kb-drawer-sep"></div>
+                            <div class="kb-drawer-section">
+                                <span class="kb-drawer-label"><span class="kb-skel-block kb-skel-text kb-skel-label"></span></span>
+                                @for (var i = 0; i < 3; i++)
+                                {
+                                    <div class="kb-drawer-item">
+                                        <span class="kb-skel-block kb-skel-icon"></span>
+                                        <span class="kb-skel-block kb-skel-text @(i == 1 ? "kb-skel-w-45" : "kb-skel-w-55")"></span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
                     </div>
                 </div>
             </aside>
@@ -49,25 +145,37 @@
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>
                         </button>
                     }
-                    <a class="kb-brand" asp-area="Tasks" asp-controller="Tasks" asp-action="Index">
-                        <img src="~/images/columnist-logo.png" alt="Columnist" class="kb-brand-logo" />
+                    @{
+                        var logoBoost = UserContext.IsAuthenticated;
+                    }
+                    <a class="kb-brand" asp-area="Tasks" asp-controller="Tasks" asp-action="Index"
+                       hx-boost="@(logoBoost ? "true" : null)" hx-target="@(logoBoost ? "#kb-page" : null)" hx-select="@(logoBoost ? "#kb-page" : null)" hx-swap="@(logoBoost ? "outerHTML show:window:top" : null)"
+                       data-skeleton="@(logoBoost ? "board" : null)" data-skeleton-into="@(logoBoost ? "[data-page-main]" : null)" data-skeleton-label="@(logoBoost ? "Loading board" : null)">
+                        <picture class="brand-logo-picture"><source srcset="@Html.AssetUrl("images/columnist-logo-88.webp")" type="image/webp" /><img src="~/images/columnist-logo-88.png" asp-append-version="true" alt="Columnist" class="kb-brand-logo" /></picture>
                     </a>
                     @if (ViewData["Crumb"] is string crumb)
                     {
                         <span class="kb-crumb-sep" aria-hidden="true">/</span>
                         <span class="kb-crumb">@crumb</span>
                     }
+                    else if (ViewData["BoardShell"] is true)
+                    {
+                        <span class="kb-crumb-sep" aria-hidden="true">/</span>
+                        <span class="kb-crumb" aria-hidden="true"><span class="kb-skel-block kb-skel-text kb-skel-name"></span></span>
+                    }
                     <span class="kb-topbar-spacer"></span>
-                    @await RenderSectionAsync("TopBar", required: false)
+                    @* The page's own top bar actions; the Board · Dashboard · Report tabs swap them along (hx-select-oob). *@
+                    <div id="kb-topbar-actions" class="kb-topbar-actions">@await RenderSectionAsync("TopBar", required: false)</div>
                     @if (UserContext.IsAuthenticated)
                     {
                         <div class="kb-um">
-                            <partial name="_AccountMenuButton" />
+                            @await Component.InvokeAsync("AccountMenu", new { part = "button" })
                             <div class="kb-um-menu" role="menu" data-user-menu hidden>
-                                <partial name="_AccountMenuHead" />
+                                @await Component.InvokeAsync("AccountMenu", new { part = "head" })
                                 <div class="kb-um-hr" role="separator"></div>
                                 <button type="button" class="kb-um-item" role="menuitem" data-profile-open
-                                        hx-get="@Url.Action("Index", "Profile", new { area = "Auth" })" hx-target="#kb-profile-modal-body" hx-select="#kb-profile" hx-swap="innerHTML">
+                                        hx-get="@Url.Action("Index", "Profile", new { area = "Auth" })" hx-target="#kb-profile-modal-body" hx-select="#kb-profile" hx-swap="innerHTML"
+                                        data-skeleton="profile" data-skeleton-label="Loading profile">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"></path></svg>
                                     Profile
                                 </button>
@@ -89,7 +197,7 @@
                 </div>
             </header>
             <div class="container">
-                <main role="main" class="pb-3">
+                <main role="main" class="pb-3" data-page-main>
                     @RenderBody()
                 </main>
             </div>
@@ -101,20 +209,25 @@
             </footer>
         </div>
     </div>
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/lib/jquery/dist/jquery.min.js" asp-append-version="true"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js" asp-append-version="true"></script>
     <script src="~/lib/htmx/htmx.min.js" asp-append-version="true"></script>
     <script src="~/lib/idiomorph/dist/idiomorph-ext.min.js" asp-append-version="true"></script>
     <script src="~/js/components/layout/side-nav.js" asp-append-version="true"></script>
     <script src="~/lib/microsoft-signalr/dist/browser/signalr.min.js" asp-append-version="true"></script>
     <script src="~/lib/Sortable/Sortable.min.js" asp-append-version="true"></script>
+    <script src="~/js/components/shared/layers.js" asp-append-version="true"></script>
     <script src="~/js/components/shared/confirm-modal.js" asp-append-version="true"></script>
+    <script src="~/js/components/shared/skeleton.js" asp-append-version="true"></script>
     <script src="~/js/components/tasks/task-modal.js" asp-append-version="true"></script>
     <script src="~/js/components/board/board-dnd.js" asp-append-version="true"></script>
     <script src="~/js/components/board/board-pan.js" asp-append-version="true"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     <script src="~/js/components/board/live-board.js" asp-append-version="true"></script>
     <script src="~/js/components/board/board-filter.js" asp-append-version="true"></script>
+    <script src="~/js/components/board/reports.js" asp-append-version="true"></script>
+    <script src="~/js/components/board/dashboard.js" asp-append-version="true"></script>
+    <script src="~/js/components/board/page-tabs.js" asp-append-version="true"></script>
     <div class="kb-lightbox" hidden data-lightbox-root>
         <button type="button" class="kb-lightbox-close" aria-label="Close" data-lightbox-close>
             <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
@@ -168,10 +281,10 @@
                 </div>
             </div>
         </div>
+        <partial name="Skeletons/_Skeletons" />
     }
     <partial name="_ValidationScriptsPartial" />
     <script src="~/js/components/tasks/lightbox.js" asp-append-version="true"></script>
-    <script src="~/js/components/tasks/file-upload.js" asp-append-version="true"></script>
     <script src="~/js/components/shared/toast.js" asp-append-version="true"></script>
     <script src="~/js/components/shared/copy-text.js" asp-append-version="true"></script>
     <script src="~/js/components/board/board-settings.js" asp-append-version="true"></script>
@@ -182,7 +295,7 @@
     <script src="~/js/components/layout/new-board.js" asp-append-version="true"></script>
     <script src="~/js/components/shared/danger-zone.js" asp-append-version="true"></script>
     <script src="~/js/components/tasks/task-history.js" asp-append-version="true"></script>
-    <script src="~/js/components/tasks/assignee-picker.js" asp-append-version="true"></script>
     <script src="~/js/components/tasks/checklists.js" asp-append-version="true"></script>
+    <script src="~/js/components/tasks/task-inline.js" asp-append-version="true"></script>
 </body>
 </html>

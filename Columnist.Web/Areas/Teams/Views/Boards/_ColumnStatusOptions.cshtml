@@ -1,0 +1,6 @@
+@model IReadOnlyList<Columnist.Teams.Features.Boards.Queries.GetBoardSettings.Models.ColumnStatusModel>
+@* The "Add another column" popup's status options (Boards/ColumnStatuses, loaded by add-column.js). *@
+@foreach (var status in Model)
+{
+    <option value="@status.Name" data-color="@status.Color">@status.Name</option>
+}

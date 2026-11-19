@@ -17,6 +17,8 @@ using System.Security.Claims;
 using Columnist.Services.Realtime;
 using Columnist.Web.Application.Realtime;
 using Columnist.Web.Application.Teams;
+using Microsoft.AspNetCore.ResponseCompression;
+using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -116,6 +118,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
+// Brotli first, then Gzip, for text responses (pages, htmx partials, CSS, JS, JSON, SVG), also over HTTPS. Images aren't
+// listed; SignalR (/hubs) is left out below. Build-time static files come pre-compressed from MapStaticAssets.
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+    options.MimeTypes = ["text/html", "text/css", "text/javascript", "application/javascript", "application/json", "image/svg+xml"];
+});
+
 var app = builder.Build();
 app.UseTokens();
 
@@ -130,7 +142,12 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseStaticFiles();   // serves runtime uploads (wwwroot/dms); MapStaticAssets only covers build-time files
+app.UseWhen(context => !context.Request.Path.StartsWithSegments("/hubs"), branch => branch.UseResponseCompression());
+
+// Runtime uploads (wwwroot/dms); every build-time file is served by MapStaticAssets (pre-compressed, fingerprinted).
+var dmsPath = Path.Combine(app.Environment.WebRootPath, "dms");
+Directory.CreateDirectory(dmsPath);
+app.UseStaticFiles(new StaticFileOptions { FileProvider = new PhysicalFileProvider(dmsPath), RequestPath = "/dms" });
 app.UseRouting();
 
 app.UseMiddleware<RefreshTokenMiddleware>();
@@ -143,34 +160,40 @@ app.MapAreaControllerRoute(
     name: "tasks",
     areaName: "Tasks",
     pattern: "tasks/{action=Index}/{token?}",
-    defaults: new { controller = "Tasks" });
+    defaults: new { controller = "Tasks" })
+    .WithStaticAssets();
 
 app.MapAreaControllerRoute(
     name: "auth",
     areaName: "Auth",
-    pattern: "Auth/{controller=Account}/{action=Login}/{id?}");
+    pattern: "Auth/{controller=Account}/{action=Login}/{id?}")
+    .WithStaticAssets();
 
 app.MapAreaControllerRoute(
     name: "teams",
     areaName: "Teams",
     pattern: "teams/{action=Index}/{token?}",
-    defaults: new { controller = "Teams" });
+    defaults: new { controller = "Teams" })
+    .WithStaticAssets();
 
 app.MapAreaControllerRoute(
     name: "boards",
     areaName: "Teams",
     pattern: "boards/{action=Manage}/{token?}",
-    defaults: new { controller = "Boards" });
+    defaults: new { controller = "Boards" })
+    .WithStaticAssets();
 
 app.MapAreaControllerRoute(
     name: "logs",
     areaName: "Tasks",
     pattern: "logs/{action=Index}",
-    defaults: new { controller = "Logs" });
+    defaults: new { controller = "Logs" })
+    .WithStaticAssets();
 
 app.MapControllerRoute(
     name: "areas",
-    pattern: "{area:exists}/{controller=Home}/{action=Index}/{id?}");
+    pattern: "{area:exists}/{controller=Home}/{action=Index}/{id?}")
+    .WithStaticAssets();
 
 app.MapControllerRoute(
     name: "default",

@@ -1,0 +1,12 @@
+@* Deleted tasks page (DeletedTasks/Index): the header, the search and the cards. deleted-results is just the cards (search). *@
+<template data-skeleton-template="deleted-page">
+    <section class="kb-skel kb-deleted">
+        <partial name="Skeletons/_SkeletonPageHeader" model="true" />
+        <div class="kb-search">
+            <span class="kb-skel-block kb-skel-input"></span>
+        </div>
+        <div class="kb-deleted-grid">
+            <partial name="Skeletons/_SkeletonDeletedCards" />
+        </div>
+    </section>
+</template>

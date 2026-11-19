@@ -24,7 +24,7 @@ public sealed class AuthController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> Login(LoginRequest request, CancellationToken ct)
     {
-        return (await _mediator.Send(new LoginCommand(request.Username ?? string.Empty, request.Password ?? string.Empty), ct)).ToActionResult();
+        return (await _mediator.Send(new LoginCommand(request.Email ?? string.Empty, request.Password ?? string.Empty), ct)).ToActionResult();
     }
 
     [HttpPost("refresh")]

@@ -1,4 +1,5 @@
 using Columnist.Auth.Security.CurrentUser;
+using Columnist.Auth.Security.Teams;
 using Columnist.Auth.Security.Photos;
 using Columnist.Contracts.Dtos;
 using Columnist.DataAccess;
@@ -15,10 +16,12 @@ public sealed class GetTeamSettingsHandler : IRequestHandler<GetTeamSettingsQuer
 {
     private readonly IDbExecutor _db;
     private readonly IUserContext _userContext;
+    private readonly IUserTeamsService _teams;
     private readonly IUserPhotoService _photos;
 
-    public GetTeamSettingsHandler(IDbExecutor db, IUserContext userContext, IUserPhotoService photos)
+    public GetTeamSettingsHandler(IDbExecutor db, IUserContext userContext, IUserPhotoService photos, IUserTeamsService teams)
     {
+        _teams = teams;
         _db = db;
         _userContext = userContext;
         _photos = photos;
@@ -30,13 +33,9 @@ public sealed class GetTeamSettingsHandler : IRequestHandler<GetTeamSettingsQuer
         if (teamId is null)
             return ApiResponse<GetTeamSettingsModel>.NotFound(ErrorMessages.TeamNotFound);
 
-        var userParameters = new DynamicParameters();
-        userParameters.Add("@UserId", _userContext.UserId);
-
-        var teams = await _db.QueryAsync<TeamDto>("dbo.GetUserTeams", userParameters, cancellationToken);
-        var team = teams.FirstOrDefault(t => t.Id == teamId.Value && t.IsOwner);
+        var team = (await _teams.GetAsync(cancellationToken)).FirstOrDefault(t => t.Id == teamId.Value);
         if (team is null)
-            return ApiResponse<GetTeamSettingsModel>.Forbidden(ErrorMessages.Forbidden);
+            return ApiResponse<GetTeamSettingsModel>.NotFound(ErrorMessages.TeamNotFound);
 
         // Today's code: rotate if expired. If the new code is taken by another team, the proc keeps the old one; try again (max 5).
         InviteCodeDto? code = null;

@@ -1,0 +1,49 @@
+@* Board report page (Reports/Index): the header with Export CSV, the filter panel and the card groups. *@
+<template data-skeleton-template="report-page">
+    <section class="kb-skel kb-deleted">
+        <div class="rp-head">
+            <partial name="Skeletons/_SkeletonPageHeader" model="true" />
+            <span class="kb-skel-block kb-skel-strong kb-skel-btn"></span>
+        </div>
+        <div class="rp-filters">
+            <div class="rp-filter-row">
+                <span class="kb-skel-block kb-skel-input rp-search"></span>
+                <span class="kb-skel-block kb-skel-filter"></span>
+                <span class="kb-skel-block kb-skel-filter"></span>
+                <span class="kb-skel-block kb-skel-filter"></span>
+            </div>
+            <div class="rp-filter-row">
+                <span class="kb-skel-block kb-skel-tag" data-skeleton-repeat="4"></span>
+            </div>
+        </div>
+        <div class="rp-group" data-skeleton-repeat="3">
+            <span class="kb-skel-block kb-skel-strong kb-skel-name"></span>
+            <div class="rp-grid">
+                @* A Report card (icon tile, label, note, number) with three task rows. *@
+                <div class="rp-card kb-skel-card" data-skeleton-repeat="3">
+                    <div class="rp-card-head">
+                        <span class="kb-skel-block kb-skel-strong rp-tile"></span>
+                        <div class="rp-card-text kb-skel-lines">
+                            <span class="kb-skel-block kb-skel-strong kb-skel-label"></span>
+                            <span class="kb-skel-block kb-skel-w-70"></span>
+                        </div>
+                        <span class="kb-skel-block kb-skel-strong kb-skel-count rp-skel-number"></span>
+                    </div>
+                    <ul class="rp-rows">
+                        <li class="rp-row" data-skeleton-repeat="3">
+                            <div class="rp-row-link rp-row-static">
+                                <span class="rp-row-main kb-skel-lines">
+                                    <span class="kb-skel-block kb-skel-strong" data-skeleton-cycle="kb-skel-w-80|kb-skel-w-65"></span>
+                                    <span class="rp-chips">
+                                        <span class="kb-skel-block kb-skel-pill kb-skel-chip-sm" data-skeleton-repeat="2"></span>
+                                    </span>
+                                </span>
+                                <span class="kb-skel-block kb-skel-circle kb-skel-avatar-sm"></span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+</template>

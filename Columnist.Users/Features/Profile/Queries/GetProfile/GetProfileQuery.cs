@@ -4,5 +4,5 @@ using MediatR;
 
 namespace Columnist.Users.Features.Profile.Queries.GetProfile;
 
-// The signed-in user's own profile.
-public sealed record GetProfileQuery : IRequest<ApiResponse<GetProfileModel>>;
+// The signed-in user's own profile. TeamToken = the team cookie (picks the "Role · Team" line).
+public sealed record GetProfileQuery(string? TeamToken = null) : IRequest<ApiResponse<GetProfileModel>>;

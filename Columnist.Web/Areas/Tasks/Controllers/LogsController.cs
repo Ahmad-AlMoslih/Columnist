@@ -1,7 +1,6 @@
 using Columnist.Tasks.Features.Logs.Queries.GetBoardLogs;
 using Columnist.Utilities.Response.Enums;
 using Columnist.Web.Models;
-using Columnist.Web.Application.Teams;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,13 +12,8 @@ namespace Columnist.Web.Areas.Tasks.Controllers;
 public class LogsController : Controller
 {
     private readonly IMediator _mediator;
-    private readonly CurrentTeams _currentTeams;
 
-    public LogsController(IMediator mediator, CurrentTeams currentTeams)
-    {
-        _mediator = mediator;
-        _currentTeams = currentTeams;
-    }
+    public LogsController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet]
     public async Task<IActionResult> Index(string? board, string? category, string? actor, string? q, int page = 1, string? after = null, CancellationToken ct = default)
@@ -34,9 +28,6 @@ public class LogsController : Controller
             return Forbidden();
         if (!response.IsSuccess)
             return StatusCode(response.StatusCode);
-
-        var teams = await _currentTeams.GetAsync(ct);
-        ViewData["IsTeamOwner"] = teams.Data?.Teams.FirstOrDefault(t => t.IsCurrent)?.IsOwner == true;
 
         return View(new LogsViewModel(board, response.Data! with { LastDay = lastDay }));
     }

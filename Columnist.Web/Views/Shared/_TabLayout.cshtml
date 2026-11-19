@@ -1,0 +1,9 @@
+@* A Board · Dashboard · Report tab (HtmxExtensions.IsTabSwap): only the page's #kb-tab-page, its title and the top bar's
+   actions (the tab swaps them along, hx-select-oob). The side menu, the top bar, the tab row and the account menu stay as
+   they are; the tab row's active state follows #kb-tab-page's data-page (page-tabs.js). *@
+@{
+    IgnoreSection("UserMenu");
+}
+<title>@ViewData["Title"] - Columnist</title>
+@RenderBody()
+<div id="kb-topbar-actions" class="kb-topbar-actions">@await RenderSectionAsync("TopBar", required: false)</div>

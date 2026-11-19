@@ -6,4 +6,4 @@ using Columnist.Auth.Authorization;
 namespace Columnist.Users.Features.Users.Commands.Login;
 
 [AllowAnonymousRequest]
-public sealed record LoginCommand(string Username, string Password) : IRequest<ApiResponse<LoginResultDto>>;
+public sealed record LoginCommand(string Email, string Password) : IRequest<ApiResponse<LoginResultDto>>;

@@ -17,7 +17,7 @@ Content-Type: application/json
 POST {{api}}/api/auth/login
 Content-Type: application/json
 
-{ "username": "admin", "password": "Admin123!" }
+{ "email": "admin@example.com", "password": "Admin123!" }
 
 ### Logout
 POST {{api}}/api/auth/logout
@@ -39,7 +39,7 @@ POST {{api}}/api/auth/login
 Content-Type: application/json
 
 {
-  "username": "ahmed",
+  "email": "ahmed@example.com",
   "password": "User123!"
 }
 

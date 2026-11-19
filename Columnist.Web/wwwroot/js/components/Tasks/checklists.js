@@ -228,4 +228,12 @@
         var box = form.closest('[data-cl-inline]');
         if (box) focusInput(box);
     });
+
+    document.addEventListener('htmx:afterSettle', function () {
+        var active = document.activeElement;
+        if (active && active !== document.body) return;
+        var openModal = document.querySelector('.modal.show');
+        if (openModal) openModal.focus({ preventScroll: true });
+    });
+
 })();

@@ -26,7 +26,7 @@ public class AccountController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Login(LoginFormDto form)
     {
-        var result = await _mediator.Send(new LoginCommand(form.Username ?? string.Empty, form.Password ?? string.Empty));
+        var result = await _mediator.Send(new LoginCommand(form.Email ?? string.Empty, form.Password ?? string.Empty));
 
         if (!result.IsSuccess)
         {
@@ -55,13 +55,13 @@ public class AccountController : Controller
     public IActionResult ForgotPassword()
         => View(new ForgotPasswordFormDto());
 
-    // Shows the same "Check your email" screen whether or not the username exists or an email was sent.
+    // Shows the same "Check your email" screen whether or not the email exists or an email was sent.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ForgotPassword(ForgotPasswordFormDto form, CancellationToken ct)
     {
         var resetPageUrl = Url.Action(nameof(ResetPassword), "Account", new { area = "Auth" }, Request.Scheme)!;
-        var result = await _mediator.Send(new ForgotPasswordCommand(form.Username ?? string.Empty, resetPageUrl), ct);
+        var result = await _mediator.Send(new ForgotPasswordCommand(form.Email ?? string.Empty, resetPageUrl), ct);
 
         if (!result.IsSuccess)
         {
@@ -79,7 +79,7 @@ public class AccountController : Controller
         if (!reset.IsSuccess)
             return View("ResetPasswordExpired");
 
-        return View(new ResetPasswordFormDto { Token = token, Username = reset.Data });
+        return View(new ResetPasswordFormDto { Token = token, Email = reset.Data });
     }
 
     [HttpPost]
@@ -98,12 +98,12 @@ public class AccountController : Controller
         if (result.StatusCode == StatusCodes.Status404NotFound)
             return View("ResetPasswordExpired");
 
-        // Validation errors: show the form again, with the username reloaded from the token.
+        // Validation errors: show the form again, with the email reloaded from the token.
         var reset = await _mediator.Send(new GetPasswordResetQuery(token), ct);
         if (!reset.IsSuccess)
             return View("ResetPasswordExpired");
 
         ModelState.AddApiErrors(result.Errors);
-        return View(new ResetPasswordFormDto { Token = token, Username = reset.Data });
+        return View(new ResetPasswordFormDto { Token = token, Email = reset.Data });
     }
 }

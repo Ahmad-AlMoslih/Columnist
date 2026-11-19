@@ -24,7 +24,8 @@
     }
 
     function searchInput(root) {
-        var form = document.querySelector(panelOf(root).getAttribute('hx-include'));
+        var include = panelOf(root).getAttribute('hx-include');
+        var form = include && document.querySelector(include);
         return form && form.querySelector('[name="search"]');
     }
 
@@ -43,12 +44,54 @@
         root.querySelector('[data-filter-nomatch]').hidden = any;
     }
 
+    // The panel's checked people (assignees, unassigned) with the board, as a query string.
+    function chosenQuery(root) {
+        var panel = panelOf(root);
+        var params = new URLSearchParams();
+        panel.querySelectorAll('[data-filter-option] input:checked').forEach(function (input) {
+            params.append(input.name, input.value);
+        });
+        var include = panel.getAttribute('hx-include');
+        var form = include && document.querySelector(include);
+        var board = form && form.querySelector('[name="boardToken"]');
+        if (board) params.set('boardToken', board.value);
+        return params.toString();
+    }
+
+    // The board renders only the chosen people; the first time the dropdown opens the full list replaces them
+    // (Tasks/FilterMembers), keeping them checked. A choice made while it loads: it is loaded again with it.
+    function loadMembers(root) {
+        var list = root.querySelector('[data-filter-options]');
+        if (!list || list.hasAttribute('data-filter-loaded') || list.dataset.loading) return;
+        list.dataset.loading = '1';
+        var sent = chosenQuery(root);
+        fetch(list.dataset.membersUrl + '?' + sent)
+            .then(function (response) { return response.ok ? response.text() : ''; })
+            .catch(function () { return ''; })
+            .then(function (html) {
+                delete list.dataset.loading;
+                if (!html || !list.isConnected) return;
+                if (chosenQuery(root) !== sent) {
+                    loadMembers(root);
+                    return;
+                }
+                var parsed = document.createElement('template');
+                parsed.innerHTML = html;
+                var full = parsed.content.querySelector('[data-filter-options]');
+                if (!full) return;
+                list.replaceWith(full);
+                var search = menuOf(root).querySelector('[data-search-client]');
+                filterMembers(root, search ? search.value : '');
+            });
+    }
+
     function setMenu(root, open) {
         var menu = menuOf(root);
         menu.hidden = !open;
         root.querySelector('[data-filter-select-toggle]').setAttribute('aria-expanded', open ? 'true' : 'false');
         var search = menu.querySelector('[data-search-client]');
         if (open) {
+            loadMembers(root);
             if (search) search.focus();
         } else {
             if (search) search.value = '';
@@ -130,6 +173,8 @@
         if (!evt.target.closest) return;
         var root = rootOf();
         if (!root) return;
+        // A click inside a popup (e.g. the task popup) is that popup's.
+        if (evt.target.closest('.modal')) return;
 
         // A click outside closes the dropdown first, then the panel.
         if (!menuOf(root).hidden) {
@@ -189,6 +234,31 @@
         evt.preventDefault();
         var root = evt.target.closest('[data-board-filter]');
         if (root) apply(root);
+    });
+
+    // While the search or a filter reloads the columns (not a live refresh), the real columns and headers stay and
+    // each column's cards give way to two skeleton cards (skeleton.js) until the new columns swap in.
+    document.addEventListener('htmx:beforeSend', function (evt) {
+        var columns = evt.detail.target;
+        var config = evt.detail.requestConfig;
+        if (!columns || columns.id !== 'kb-board-columns' || !window.KbSkeleton) return;
+        if (config && config.headers && config.headers['X-Live-Refresh']) return;
+
+        KbSkeleton.whenSlow(evt, function () {
+            if (!columns.isConnected) return null;
+            var undo = [KbSkeleton.mark(columns, 'Loading tasks')];
+            columns.querySelectorAll('[data-column-token]').forEach(function (body) {
+                var cards = document.createDocumentFragment();
+                [0, 1].forEach(function () {
+                    var card = KbSkeleton.build('board-card');
+                    if (card) cards.appendChild(card);
+                });
+                undo.push(KbSkeleton.fill(body, cards));
+            });
+            return function () {
+                undo.forEach(function (fn) { fn(); });
+            };
+        });
     });
 
     // Escape closes the dropdown first, then the panel. With a popup (e.g. the task) open, Escape stays the popup's.

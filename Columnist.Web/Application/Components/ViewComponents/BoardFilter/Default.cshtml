@@ -3,16 +3,14 @@
 @using Columnist.Tasks.Features.Tasks.Queries.GetBoard.Models
 @using Columnist.Web.Application.Components.Helpers
 @{
-    var url = (string)ViewData["Url"]!;
-    var searchForm = (string)ViewData["SearchForm"]!;
+    var url = ViewData["Url"] as string;
+    var searchForm = ViewData["SearchForm"] as string;
     var count = Model.ActiveGroupCount;
-
-    static string FirstName(string name) => name.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? name;
 
     // Closed dropdown: "Anyone", or the chosen names ("Me, Sara +1").
     var chosen = new List<string>();
     if (Model.MeSelected) chosen.Add("Me");
-    chosen.AddRange(Model.Members.Where(m => m.Selected).Select(m => FirstName(m.Name)));
+    chosen.AddRange(Model.Members.Where(m => m.Selected).Select(m => m.FirstName));
     if (Model.Unassigned) chosen.Add("Unassigned");
     var assigneeText = chosen.Count == 0 ? "Anyone" : string.Join(", ", chosen.Take(2)) + (chosen.Count > 2 ? $" +{chosen.Count - 2}" : "");
 
@@ -24,7 +22,6 @@
 <div class="kb-filter" id="kb-board-filter" data-board-filter data-morph-skip>
     <button type="button" class="kb-filter-btn" aria-expanded="false" aria-controls="kb-board-filter-form" data-filter-toggle>
         <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8.5V19l-4 2v-7.5z"></path></svg>
-        
         <span class="kb-filter-badge" hidden="@(count == 0)" data-filter-badge>@count</span>
     </button>
 
@@ -41,34 +38,7 @@
                 </button>
                 <div class="kb-filter-menu" hidden data-filter-menu>
                     @await Component.InvokeAsync("SearchBox", new { url = (string?)null, target = (string?)null, value = (string?)null, placeholder = "Search people…", clientOnly = true })
-                    <ul class="kb-filter-options">
-                        <li data-filter-option data-name="Me">
-                            <label class="kb-ap-option">
-                                <input type="checkbox" class="form-check-input" name="assignees" value="@Model.MeToken" checked="@Model.MeSelected" data-filter-input data-filter-label="Me" />
-                                <span class="kb-ap-option-name">Me</span>
-                            </label>
-                        </li>
-                        @foreach (var member in Model.Members)
-                        {
-                            <li data-filter-option data-name="@member.Name">
-                                <label class="kb-ap-option">
-                                    <input type="checkbox" class="form-check-input" name="assignees" value="@member.Token" checked="@member.Selected" data-filter-input data-filter-label="@FirstName(member.Name)" />
-                                    <span class="kb-ap-avatar">@Html.AvatarCircle(member.Name, noAccess: !member.HasAccess, photoUrl: member.PhotoUrl)</span>
-                                    <span class="kb-ap-option-name">@member.Name</span>
-                                    @if (!member.HasAccess)
-                                    {
-                                        <span class="kb-noaccess-tag">No access</span>
-                                    }
-                                </label>
-                            </li>
-                        }
-                        <li data-filter-option data-name="Unassigned">
-                            <label class="kb-ap-option">
-                                <input type="checkbox" class="form-check-input" name="unassigned" value="1" checked="@Model.Unassigned" data-filter-input data-filter-label="Unassigned" />
-                                <span class="kb-ap-option-name">Unassigned</span>
-                            </label>
-                        </li>
-                    </ul>
+                    <partial name="_BoardFilterOptions" model="Model" />
                     <p class="kb-filter-nomatch" hidden data-filter-nomatch>No members match</p>
                 </div>
             </div>

@@ -28,12 +28,14 @@
         <div class="au-footer-actions">
         @if (nextUrl is not null)
         {
-            <button type="button" class="kb-btn-secondary" hx-get="@nextUrl" hx-target="closest [data-audit-footer]" hx-select="[data-audit-rows] > *" hx-swap="outerHTML">Load more</button>
+            <button type="button" class="kb-btn-secondary" hx-get="@nextUrl" hx-target="closest [data-audit-footer]" hx-select="[data-audit-rows] > *" hx-swap="outerHTML"
+                    data-skeleton="log-rows" data-skeleton-label="Loading logs">Load more</button>
         }
         @if (firstUrl is not null)
         {
             @* Swaps the whole list back to the first page and scrolls up to it. *@
-            <button type="button" class="kb-btn-secondary" hx-get="@firstUrl" hx-target="closest [data-audit-rows]" hx-select="[data-audit-rows]" hx-swap="outerHTML show:top">Show less</button>
+            <button type="button" class="kb-btn-secondary" hx-get="@firstUrl" hx-target="closest [data-audit-rows]" hx-select="[data-audit-rows]" hx-swap="outerHTML show:top"
+                    data-skeleton="log-rows" data-skeleton-label="Loading logs">Show less</button>
         }
         </div>
     </div>

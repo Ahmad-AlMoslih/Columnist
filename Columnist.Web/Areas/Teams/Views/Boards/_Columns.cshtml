@@ -33,7 +33,9 @@
     </section>
 
     <div class="bs-actions">
-        <a class="kb-btn-secondary" asp-area="Tasks" asp-controller="Tasks" asp-action="Index" asp-route-boardToken="@Model.BoardToken">Cancel</a>
+        <a class="kb-btn-secondary" asp-area="Tasks" asp-controller="Tasks" asp-action="Index" asp-route-boardToken="@Model.BoardToken"
+           hx-boost="true" hx-target="#kb-page" hx-select="#kb-page" hx-swap="outerHTML show:window:top"
+           data-skeleton="board" data-skeleton-into="[data-page-main]" data-skeleton-label="Loading board">Cancel</a>
         <button type="submit" class="kb-btn-primary">@(Model.IsNew ? "Create board" : "Save board")</button>
     </div>
 </form>
